@@ -1,4 +1,4 @@
-# All Of Me Demo
+# All Of Me
 
 All Of Me is an original local-first Flutter prototype for plural system tracking. It draws broad inspiration from the workflow category served by apps like Simply Plural, while using its own product direction, UI, code, data model, and assets.
 
