@@ -56,6 +56,8 @@ BUILD_NAME=0.1.1 BUILD_NUMBER=2 scripts/package_ios_release.sh
 - Subtitle: Local-first system tracking
 - Category: Lifestyle
 - SKU: `allofme-ios`
+- Privacy Policy URL: publish `docs/privacy-policy.md` through GitHub Pages or another public site
+- Support URL: publish `docs/support.md` through GitHub Pages or another public site
 - Age rating notes: no user-generated public sharing, no account system, no network sync in this build
 - Privacy summary: data is stored locally on the device; backups, imports, profile images, and app lock are explicit user actions
 
