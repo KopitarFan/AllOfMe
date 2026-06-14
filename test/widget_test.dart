@@ -119,10 +119,14 @@ void main() {
     AppSnapshot? snapshot,
     AppStore? store,
     AppAuthenticator? authenticator,
-    Size size = const Size(1200, 900),
+    Size size = const Size(800, 600),
   }) async {
-    await tester.binding.setSurfaceSize(size);
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = size;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
     await tester.pumpWidget(
       AllOfMeApp(
@@ -141,6 +145,17 @@ void main() {
     await tester.ensureVisible(tile);
     await tester.pumpAndSettle();
     await tester.tap(tile);
+  }
+
+  Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
+  }
+
+  void expectNoFlutterErrors(WidgetTester tester) {
+    expect(tester.takeException(), isNull);
   }
 
   testWidgets('shows the local-first home screen', (tester) async {
@@ -327,6 +342,59 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('home, insights, and settings fit iPad portrait', (tester) async {
+    await pumpApp(tester, size: const Size(834, 1194));
+
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Members'), findsOneWidget);
+    expect(find.byTooltip('Insights'), findsOneWidget);
+    expect(find.byTooltip('Settings and privacy'), findsOneWidget);
+    expectNoFlutterErrors(tester);
+
+    await tester.tap(find.byTooltip('Insights'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Insights'), findsOneWidget);
+    expect(find.text('Member front time'), findsOneWidget);
+    expect(find.text('Group front time'), findsOneWidget);
+    expectNoFlutterErrors(tester);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Close'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings & privacy'), findsOneWidget);
+    await tester.ensureVisible(find.widgetWithText(SwitchListTile, 'App lock'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Clear all local data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Clear all local data'), findsOneWidget);
+    expectNoFlutterErrors(tester);
+  });
+
+  testWidgets('home uses iPad landscape split layout without overflow', (
+    tester,
+  ) async {
+    await pumpApp(tester, size: const Size(1194, 834));
+
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Members'), findsOneWidget);
+    expect(find.text('Timeline'), findsOneWidget);
+    expect(find.text('Mara'), findsWidgets);
+    expectNoFlutterErrors(tester);
+
+    await tester.tap(find.byTooltip('Add member').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('New member'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Image'), findsOneWidget);
+    expect(find.text('Groups'), findsOneWidget);
+    expectNoFlutterErrors(tester);
+  });
+
   testWidgets('main app actions expose tooltip labels', (tester) async {
     await pumpApp(tester);
 
@@ -482,8 +550,7 @@ void main() {
     final sol = seeded.members[1];
     await pumpApp(tester, store: store);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Front').first);
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.widgetWithText(FilledButton, 'Front').first);
 
     expect(find.text('Sol - Started fronting'), findsWidgets);
 
@@ -492,8 +559,10 @@ void main() {
     expect(activeSnapshot?.frontSessions.first.memberId, sol.id);
     expect(activeSnapshot?.frontSessions.first.isOpen, isTrue);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Fronting').last);
-    await tester.pumpAndSettle();
+    await tapVisible(
+      tester,
+      find.widgetWithText(FilledButton, 'Fronting').last,
+    );
 
     final closedSnapshot = await store.load();
     expect(closedSnapshot?.frontingMemberIds, isNot(contains(sol.id)));
@@ -509,8 +578,7 @@ void main() {
 
     await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Delete timeline entry'));
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.byTooltip('Delete timeline entry'));
 
     var saved = await store.load();
     expect(saved?.activeTimeline, isEmpty);
@@ -554,7 +622,8 @@ void main() {
       find.widgetWithText(TextField, 'Notes'),
       'Likes lists.',
     );
-    await tester.tap(
+    await tapVisible(
+      tester,
       find.descendant(
         of: find.byType(AlertDialog),
         matching: find.widgetWithText(FilterChip, 'Rest'),
@@ -585,8 +654,7 @@ void main() {
 
     expect(find.text('Care Team'), findsOneWidget);
 
-    await tester.tap(find.text('Care Team'));
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.widgetWithText(InputChip, 'Care Team'));
 
     expect(find.text('No members in this group'), findsOneWidget);
   });
@@ -616,8 +684,7 @@ void main() {
   testWidgets('opens group view from a member group label', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Social'));
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.widgetWithText(FilterChip, 'Social'));
 
     expect(find.text('Best for calls and errands.'), findsOneWidget);
     expect(find.text('Keeps the day moving.'), findsNothing);
