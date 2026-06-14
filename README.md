@@ -18,6 +18,8 @@ The core paradigm is inverted from client-server:
 - Product milestones: `docs/milestones.md`
 - Architecture notes: `docs/local-first-architecture.md`
 - iOS release packaging: `docs/release-packaging.md`
+- Privacy policy: `docs/privacy-policy.md`
+- Support: `docs/support.md`
 
 ## Run
 
