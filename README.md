@@ -1,5 +1,7 @@
 # All Of Me
 
+[![Flutter CI](https://github.com/KopitarFan/AllOfMe/actions/workflows/flutter-ci.yml/badge.svg)](https://github.com/KopitarFan/AllOfMe/actions/workflows/flutter-ci.yml)
+
 All Of Me is an original local-first Flutter prototype for plural system tracking. It draws broad inspiration from the workflow category served by apps like Simply Plural, while using its own product direction, UI, code, data model, and assets.
 
 All Of Me is not affiliated with, endorsed by, or derived from Simply Plural.
