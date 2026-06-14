@@ -21,6 +21,7 @@ The core paradigm is inverted from client-server:
 - Architecture notes: `docs/local-first-architecture.md`
 - iOS release packaging: `docs/release-packaging.md`
 - App Store metadata draft: `docs/app-store-metadata.md`
+- Screenshot checklist: `docs/screenshot-checklist.md`
 - Privacy policy: `docs/privacy-policy.md`
 - Support: `docs/support.md`
 

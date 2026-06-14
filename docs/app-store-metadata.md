@@ -220,16 +220,17 @@ Accessibility labels can be completed later, but current notes for review:
 
 ## Screenshot Plan
 
-Capture iPhone screenshots after final signed build is available:
+The full screenshot checklist lives in `docs/screenshot-checklist.md`.
+
+High-priority shots:
 
 - First-run setup.
-- Empty local system after "Start fresh".
-- Member list with demo data.
-- Member detail/edit form with profile image.
+- Member overview with demo data.
+- Member profile with profile image.
 - Group organization/filtering.
 - Insights dashboard.
+- Recently Deleted or timeline recovery.
 - Settings & Privacy.
-- Recently Deleted.
 - App lock screen.
 
 Avoid screenshots containing real personal/member data. Use demo data only.
