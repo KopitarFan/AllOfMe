@@ -52,6 +52,9 @@ BUILD_NAME=0.1.1 BUILD_NUMBER=2 scripts/package_ios_release.sh
 
 ## App Store Connect Draft
 
+Copy-ready metadata lives in `docs/app-store-metadata.md`.
+Screenshot planning lives in `docs/screenshot-checklist.md`.
+
 - Name: All Of Me
 - Subtitle: Local-first system tracking
 - Category: Lifestyle
