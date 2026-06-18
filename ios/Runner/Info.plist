@@ -30,6 +30,12 @@
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>All Of Me lets you choose member profile images from your photo library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>All Of Me may use the camera if you choose to take a member profile image.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>All Of Me may request microphone access only if iOS presents media capture options that include audio.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>All Of Me may request location access only if iOS presents media options that include location metadata.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>All Of Me uses Face ID to unlock your local system data when app lock is enabled.</string>
 	<key>UIApplicationSceneManifest</key>

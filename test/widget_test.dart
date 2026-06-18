@@ -5,6 +5,7 @@ import 'package:all_of_me_demo/storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('security settings round trip through snapshots', () {
@@ -121,6 +122,7 @@ void main() {
     AppAuthenticator? authenticator,
     Size size = const Size(1200, 900),
   }) async {
+    SharedPreferences.setMockInitialValues({});
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -147,11 +149,11 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('All Of Me'), findsOneWidget);
-    expect(find.text('In-memory'), findsOneWidget);
-    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Local-only system'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'View insights'), findsOneWidget);
     expect(find.text('Current front'), findsOneWidget);
     expect(find.text('Latest update'), findsOneWidget);
-    expect(find.text('Local'), findsOneWidget);
+    expect(find.byTooltip('Switch to dark mode'), findsOneWidget);
     expect(find.byTooltip('App lock'), findsOneWidget);
     expect(find.text('Device is source of truth'), findsNothing);
     expect(find.text('Members'), findsOneWidget);
@@ -174,6 +176,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings & privacy'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.widgetWithText(SwitchListTile, 'Dark mode'), findsOneWidget);
     expect(find.text('Privacy'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
     expect(find.text('Storage'), findsWidgets);
@@ -181,11 +185,50 @@ void main() {
     expect(find.text('Schema'), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'App lock'), findsOneWidget);
     expect(find.text('Face ID available'), findsOneWidget);
+    expect(find.text('Beta feedback'), findsOneWidget);
     expect(find.text('Export backup'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
     expect(find.text('Recently deleted'), findsOneWidget);
     expect(find.text('Clear all local data'), findsOneWidget);
+  });
+
+  testWidgets('shows beta feedback support details', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Beta feedback');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beta feedback'), findsOneWidget);
+    expect(find.text('Testing All Of Me'), findsOneWidget);
+    expect(find.text('Support links'), findsOneWidget);
+    expect(
+      find.text('https://kopitarfan.github.io/AllOfMe/support.html'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(FilledButton, 'Copy template'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Share'), findsOneWidget);
+  });
+
+  testWidgets('toggles between light and dark mode', (tester) async {
+    await pumpApp(tester);
+
+    expect(find.byTooltip('Switch to dark mode'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Switch to dark mode'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Switch to light mode'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    final darkModeSwitch = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, 'Dark mode'),
+    );
+    expect(darkModeSwitch.value, isTrue);
   });
 
   testWidgets('first-run setup starts fresh from an empty store', (
@@ -237,7 +280,13 @@ void main() {
     await tester.tap(find.byTooltip('Insights'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Insights'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Insights'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Front time'), findsOneWidget);
     expect(find.text('Member front time'), findsOneWidget);
     expect(find.text('Group front time'), findsOneWidget);
@@ -381,7 +430,8 @@ void main() {
     expect(saved?.groups, isEmpty);
     expect(saved?.frontSessions, isEmpty);
     expect(find.text('Mara'), findsNothing);
-    expect(find.text('No members yet'), findsOneWidget);
+    expect(find.text('Welcome to All Of Me'), findsOneWidget);
+    expect(find.text('Local first'), findsOneWidget);
     expect(find.text('Local data cleared.'), findsOneWidget);
   });
 
