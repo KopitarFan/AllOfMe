@@ -8,6 +8,8 @@ and stores app data on the user's device.
 For TestFlight builds:
 
 - Use TestFlight's built-in feedback feature when reporting beta issues.
+- In the app, open Settings & privacy and choose Beta feedback to copy a
+  report template with helpful diagnostic details.
 - If you have access to the GitHub repository, open an issue:
   <https://github.com/KopitarFan/AllOfMe/issues>
 
@@ -47,4 +49,3 @@ To protect local data:
 
 Read the privacy policy:
 [All Of Me Privacy Policy](privacy-policy.md)
-
