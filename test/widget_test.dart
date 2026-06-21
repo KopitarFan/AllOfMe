@@ -169,6 +169,33 @@ void main() {
     expect(find.text('Timeline'), findsOneWidget);
   });
 
+  testWidgets('member names can use two lines on phone screens', (
+    tester,
+  ) async {
+    const longName = 'AlexandriaCatherine';
+    final seeded = AppSnapshot.seeded();
+    final renamedMembers = seeded.members
+        .map(
+          (member) => member.id == 'member-sol'
+              ? member.copyWith(name: longName)
+              : member,
+        )
+        .toList();
+
+    await pumpApp(
+      tester,
+      snapshot: seeded.copyWith(members: renamedMembers),
+      size: const Size(390, 720),
+    );
+
+    await tester.ensureVisible(find.text(longName));
+    await tester.pumpAndSettle();
+
+    final nameText = tester.widget<Text>(find.text(longName));
+    expect(nameText.maxLines, 2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows settings and privacy details', (tester) async {
     await pumpApp(tester);
 
@@ -177,6 +204,8 @@ void main() {
 
     expect(find.text('Settings & privacy'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Color theme'), findsOneWidget);
+    expect(find.text('Evergreen'), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'Dark mode'), findsOneWidget);
     expect(find.text('Privacy'), findsOneWidget);
     expect(find.text('Privacy policy'), findsOneWidget);
@@ -229,6 +258,28 @@ void main() {
       find.widgetWithText(SwitchListTile, 'Dark mode'),
     );
     expect(darkModeSwitch.value, isTrue);
+  });
+
+  testWidgets('chooses a color theme from settings', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Color theme');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose color theme'), findsOneWidget);
+    expect(find.text('Ocean'), findsOneWidget);
+    expect(find.text('Graphite'), findsOneWidget);
+    expect(find.text('Bright Green'), findsOneWidget);
+    expect(find.text('Hot Pink'), findsOneWidget);
+
+    await tester.tap(find.text('Ocean'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings & privacy'), findsOneWidget);
+    expect(find.text('Color theme'), findsOneWidget);
+    expect(find.text('Ocean'), findsOneWidget);
   });
 
   testWidgets('first-run setup starts fresh from an empty store', (

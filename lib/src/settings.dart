@@ -6,12 +6,14 @@ class _SettingsPrivacyDialog extends StatelessWidget {
     required this.storeInfo,
     required this.lockStatus,
     required this.themeMode,
+    required this.themePalette,
   });
 
   final AppSnapshot snapshot;
   final AppStoreInfo storeInfo;
   final AppLockStatus lockStatus;
   final ThemeMode themeMode;
+  final AppThemePalette themePalette;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,15 @@ class _SettingsPrivacyDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _SettingsSectionTitle('Appearance'),
+                _SettingsActionTile(
+                  icon: Icons.palette_outlined,
+                  title: 'Color theme',
+                  subtitle: themePalette.name,
+                  leading: _ThemePaletteSwatch(themePalette: themePalette),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.chooseThemePalette),
+                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: Icon(
@@ -212,6 +223,135 @@ class _SettingsPrivacyDialog extends StatelessWidget {
   }
 }
 
+class _ThemePaletteDialog extends StatelessWidget {
+  const _ThemePaletteDialog({required this.selectedPalette});
+
+  final AppThemePalette selectedPalette;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxContentHeight = MediaQuery.sizeOf(context).height * 0.72;
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.palette_outlined),
+          SizedBox(width: 10),
+          Expanded(child: Text('Choose color theme')),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 520,
+          maxHeight: maxContentHeight < 320 ? 320 : maxContentHeight,
+        ),
+        child: Scrollbar(
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            child: RadioGroup<AppThemePalette>(
+              groupValue: selectedPalette,
+              onChanged: (value) => Navigator.of(context).pop(value),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _themePalettes.map((themePalette) {
+                  return RadioListTile<AppThemePalette>(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: _ThemePaletteSwatch(
+                      themePalette: themePalette,
+                      width: 54,
+                      height: 30,
+                    ),
+                    title: Text(themePalette.name),
+                    subtitle: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(themePalette.description),
+                        const SizedBox(height: 8),
+                        _ThemePaletteSwatch(
+                          themePalette: themePalette,
+                          width: 156,
+                          height: 16,
+                        ),
+                      ],
+                    ),
+                    value: themePalette,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemePaletteSwatch extends StatelessWidget {
+  const _ThemePaletteSwatch({
+    required this.themePalette,
+    this.width = 42,
+    this.height = 24,
+  });
+
+  final AppThemePalette themePalette;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: themePalette.seedColor,
+      brightness: Theme.of(context).brightness,
+    );
+    final previewColors =
+        themePalette.previewColors ??
+        [
+          themePalette.seedColor,
+          colorScheme.primary,
+          colorScheme.secondary,
+          colorScheme.tertiary,
+        ];
+
+    return Tooltip(
+      message: themePalette.name,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Row(
+              children: previewColors
+                  .map(
+                    (color) => Expanded(
+                      child: ColoredBox(
+                        color: color,
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsSectionTitle extends StatelessWidget {
   const _SettingsSectionTitle(this.label);
 
@@ -280,6 +420,7 @@ class _SettingsActionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.leading,
     this.destructive = false,
   });
 
@@ -287,6 +428,7 @@ class _SettingsActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Widget? leading;
   final bool destructive;
 
   @override
@@ -297,7 +439,7 @@ class _SettingsActionTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       minLeadingWidth: 32,
-      leading: Icon(icon, color: iconColor),
+      leading: leading ?? Icon(icon, color: iconColor),
       title: Text(
         title,
         style: destructive

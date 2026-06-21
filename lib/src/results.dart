@@ -38,6 +38,7 @@ enum _SettingsPrivacyAction {
   pasteBackupJson,
   openRecentlyDeleted,
   showBetaFeedback,
+  chooseThemePalette,
   enableDarkMode,
   disableDarkMode,
   enableAppLock,

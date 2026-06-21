@@ -6,14 +6,18 @@ class HomeScreen extends StatefulWidget {
     required this.store,
     required this.authenticator,
     required this.themeMode,
+    required this.themePalette,
     required this.onThemeModeChanged,
+    required this.onThemePaletteChanged,
     required this.onToggleThemeMode,
   });
 
   final AppStore store;
   final AppAuthenticator authenticator;
   final ThemeMode themeMode;
+  final AppThemePalette themePalette;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ValueChanged<AppThemePalette> onThemePaletteChanged;
   final VoidCallback onToggleThemeMode;
 
   @override
@@ -743,6 +747,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showSettingsPrivacy() async {
+    var visibleThemePalette = widget.themePalette;
+
     while (mounted) {
       final snapshot = _snapshot;
       if (snapshot == null) {
@@ -765,6 +771,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           storeInfo: info,
           lockStatus: lockStatus,
           themeMode: widget.themeMode,
+          themePalette: visibleThemePalette,
         ),
       );
 
@@ -784,6 +791,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         case _SettingsPrivacyAction.showBetaFeedback:
           await _showBetaFeedback();
           return;
+        case _SettingsPrivacyAction.chooseThemePalette:
+          final selectedPalette = await _showThemePalettePicker(
+            visibleThemePalette,
+          );
+          if (selectedPalette != null) {
+            visibleThemePalette = selectedPalette;
+          }
         case _SettingsPrivacyAction.enableDarkMode:
           widget.onThemeModeChanged(ThemeMode.dark);
         case _SettingsPrivacyAction.disableDarkMode:
@@ -805,6 +819,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return;
       }
     }
+  }
+
+  Future<AppThemePalette?> _showThemePalettePicker(
+    AppThemePalette currentPalette,
+  ) async {
+    final selectedPalette = await showDialog<AppThemePalette>(
+      context: context,
+      builder: (context) =>
+          _ThemePaletteDialog(selectedPalette: currentPalette),
+    );
+    if (selectedPalette == null) {
+      return null;
+    }
+    widget.onThemePaletteChanged(selectedPalette);
+    return selectedPalette;
   }
 
   Future<void> _showBetaFeedback() async {

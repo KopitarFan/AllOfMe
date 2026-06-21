@@ -169,12 +169,20 @@ class _MemberDialogState extends State<_MemberDialog> {
       }
 
       final bytes = await pickedImage.readAsBytes();
-      final mimeType =
-          pickedImage.mimeType ?? _mimeTypeFromPath(pickedImage.name);
+      if (!mounted) {
+        return;
+      }
+      final adjustedImageDataUri = await showDialog<String>(
+        context: context,
+        builder: (context) => _ProfileImageCropDialog(bytes: bytes),
+      );
+      if (adjustedImageDataUri == null) {
+        return;
+      }
+
       setState(() {
         _profileImageId = null;
-        _profileImageDataUri =
-            'data:${mimeType ?? 'image/jpeg'};base64,${base64Encode(bytes)}';
+        _profileImageDataUri = adjustedImageDataUri;
       });
     } catch (error) {
       if (mounted) {
@@ -361,6 +369,314 @@ class _MemberDialogState extends State<_MemberDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+class _ProfileImageCropDialog extends StatefulWidget {
+  const _ProfileImageCropDialog({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  State<_ProfileImageCropDialog> createState() =>
+      _ProfileImageCropDialogState();
+}
+
+class _ProfileImageCropDialogState extends State<_ProfileImageCropDialog> {
+  static const double _cropExtent = 240;
+  static const int _outputSize = 512;
+
+  ui.Image? _sourceImage;
+  String? _errorMessage;
+  double _scale = 1;
+  Offset _offset = Offset.zero;
+  double _gestureStartScale = 1;
+  Offset _gestureStartOffset = Offset.zero;
+  Offset _gestureStartFocalPoint = Offset.zero;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void dispose() {
+    _sourceImage?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadImage() async {
+    try {
+      final codec = await ui.instantiateImageCodec(widget.bytes);
+      final frame = await codec.getNextFrame();
+      if (!mounted) {
+        frame.image.dispose();
+        return;
+      }
+      setState(() {
+        _sourceImage = frame.image;
+        _errorMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = 'Could not prepare that image.';
+      });
+    }
+  }
+
+  double _baseScaleFor(ui.Image image) {
+    return math.max(_cropExtent / image.width, _cropExtent / image.height);
+  }
+
+  Size _displayedSize(ui.Image image, double scale) {
+    final baseScale = _baseScaleFor(image);
+    return Size(
+      image.width * baseScale * scale,
+      image.height * baseScale * scale,
+    );
+  }
+
+  Offset _clampOffset(Offset offset, double scale) {
+    final image = _sourceImage;
+    if (image == null) {
+      return Offset.zero;
+    }
+
+    final displayedSize = _displayedSize(image, scale);
+    final maxDx = math.max(0.0, (displayedSize.width - _cropExtent) / 2);
+    final maxDy = math.max(0.0, (displayedSize.height - _cropExtent) / 2);
+    return Offset(
+      offset.dx.clamp(-maxDx, maxDx).toDouble(),
+      offset.dy.clamp(-maxDy, maxDy).toDouble(),
+    );
+  }
+
+  void _handleScaleStart(ScaleStartDetails details) {
+    _gestureStartScale = _scale;
+    _gestureStartOffset = _offset;
+    _gestureStartFocalPoint = details.localFocalPoint;
+  }
+
+  void _handleScaleUpdate(ScaleUpdateDetails details) {
+    final nextScale = (_gestureStartScale * details.scale)
+        .clamp(1.0, 4.0)
+        .toDouble();
+    final nextOffset =
+        _gestureStartOffset + details.localFocalPoint - _gestureStartFocalPoint;
+
+    setState(() {
+      _scale = nextScale;
+      _offset = _clampOffset(nextOffset, nextScale);
+    });
+  }
+
+  void _setScale(double scale) {
+    setState(() {
+      _scale = scale;
+      _offset = _clampOffset(_offset, scale);
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      _scale = 1;
+      _offset = Offset.zero;
+    });
+  }
+
+  ui.Rect _sourceRectForCrop(ui.Image image) {
+    final displayedSize = _displayedSize(image, _scale);
+    final left = ((_cropExtent - displayedSize.width) / 2) + _offset.dx;
+    final top = ((_cropExtent - displayedSize.height) / 2) + _offset.dy;
+
+    return ui.Rect.fromLTWH(
+      (-left / displayedSize.width) * image.width,
+      (-top / displayedSize.height) * image.height,
+      (_cropExtent / displayedSize.width) * image.width,
+      (_cropExtent / displayedSize.height) * image.height,
+    ).intersect(
+      ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+    );
+  }
+
+  Future<String> _renderCrop() async {
+    final image = _sourceImage;
+    if (image == null) {
+      throw StateError('Image has not loaded.');
+    }
+
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final paint = ui.Paint()
+      ..isAntiAlias = true
+      ..filterQuality = ui.FilterQuality.high;
+    canvas.drawImageRect(
+      image,
+      _sourceRectForCrop(image),
+      ui.Rect.fromLTWH(0, 0, _outputSize.toDouble(), _outputSize.toDouble()),
+      paint,
+    );
+
+    final picture = recorder.endRecording();
+    final croppedImage = await picture.toImage(_outputSize, _outputSize);
+    picture.dispose();
+    final byteData = await croppedImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    croppedImage.dispose();
+    if (byteData == null) {
+      throw StateError('Could not encode cropped image.');
+    }
+
+    return 'data:image/png;base64,${base64Encode(byteData.buffer.asUint8List())}';
+  }
+
+  Future<void> _save() async {
+    if (_saving || _sourceImage == null) {
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+    });
+
+    try {
+      final dataUri = await _renderCrop();
+      if (mounted) {
+        Navigator.of(context).pop(dataUri);
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _saving = false;
+        _errorMessage = 'Could not save that crop.';
+      });
+    }
+  }
+
+  Widget _buildCropper(BuildContext context, ui.Image image) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final displayedSize = _displayedSize(image, _scale);
+    final left = ((_cropExtent - displayedSize.width) / 2) + _offset.dx;
+    final top = ((_cropExtent - displayedSize.height) / 2) + _offset.dy;
+
+    return Center(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipOval(
+            child: GestureDetector(
+              onScaleStart: _handleScaleStart,
+              onScaleUpdate: _handleScaleUpdate,
+              child: Container(
+                width: _cropExtent,
+                height: _cropExtent,
+                color: colorScheme.surfaceContainerHighest,
+                child: Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned(
+                      left: left,
+                      top: top,
+                      width: displayedSize.width,
+                      height: displayedSize.height,
+                      child: Image.memory(
+                        widget.bytes,
+                        fit: BoxFit.fill,
+                        filterQuality: ui.FilterQuality.high,
+                        gaplessPlayback: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          IgnorePointer(
+            child: Container(
+              width: _cropExtent,
+              height: _cropExtent,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: colorScheme.primary, width: 2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _sourceImage;
+
+    return AlertDialog(
+      title: const Text('Adjust image'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_errorMessage != null) ...[
+              _InlineNotice(message: _errorMessage!),
+              const SizedBox(height: 12),
+            ],
+            if (image == null)
+              const SizedBox(
+                height: _cropExtent,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else ...[
+              _buildCropper(context, image),
+              const SizedBox(height: 16),
+              Text(
+                'Drag to position. Pinch or use the slider to zoom.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: _scale,
+                min: 1,
+                max: 4,
+                divisions: 30,
+                label: '${(_scale * 100).round()}%',
+                onChanged: _setScale,
+              ),
+              TextButton.icon(
+                onPressed: _reset,
+                icon: const Icon(Icons.center_focus_strong_outlined),
+                label: const Text('Reset position'),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: image == null || _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.check),
+          label: Text(_saving ? 'Saving' : 'Use image'),
+        ),
       ],
     );
   }
