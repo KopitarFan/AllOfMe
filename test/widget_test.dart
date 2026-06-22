@@ -1,4 +1,5 @@
 import 'package:all_of_me_demo/app_lock.dart';
+import 'package:all_of_me_demo/cloud_save.dart';
 import 'package:all_of_me_demo/main.dart';
 import 'package:all_of_me_demo/models.dart';
 import 'package:all_of_me_demo/storage.dart';
@@ -119,6 +120,9 @@ void main() {
     WidgetTester tester, {
     AppSnapshot? snapshot,
     AppStore? store,
+    CloudSaveAdapter? cloudSaveAdapter,
+    CloudSavePayloadEncoder? cloudSavePayloadEncoder,
+    CloudSavePayloadDecoder? cloudSavePayloadDecoder,
     AppAuthenticator? authenticator,
     Size size = const Size(1200, 900),
   }) async {
@@ -129,6 +133,10 @@ void main() {
     await tester.pumpWidget(
       AllOfMeApp(
         store: store ?? MemoryAppStore(snapshot ?? AppSnapshot.seeded()),
+        cloudSaveAdapter: cloudSaveAdapter ?? MemoryCloudSaveAdapter(),
+        cloudSavePayloadEncoder:
+            cloudSavePayloadEncoder ?? const CloudSavePlaintextPayloadEncoder(),
+        cloudSavePayloadDecoder: cloudSavePayloadDecoder,
         authenticator: authenticator ?? FakeAppAuthenticator(),
       ),
     );
@@ -143,6 +151,28 @@ void main() {
     await tester.ensureVisible(tile);
     await tester.pumpAndSettle();
     await tester.tap(tile);
+  }
+
+  void expectMemberNotesInOrder(WidgetTester tester, List<String> notes) {
+    var previousTop = -double.infinity;
+    for (final note in notes) {
+      final noteFinder = find.text(note);
+      expect(noteFinder, findsOneWidget);
+      final top = tester.getTopLeft(noteFinder).dy;
+      expect(top, greaterThan(previousTop));
+      previousTop = top;
+    }
+  }
+
+  Future<void> tapCheckedMenuOption(WidgetTester tester, String label) async {
+    final key = switch (label) {
+      'A-Z' => 'member-sort-nameAscending',
+      'Recently fronted' => 'member-sort-recentlyFronted',
+      'Most used' => 'member-sort-mostUsed',
+      _ => throw ArgumentError.value(label, 'label', 'Unknown sort option'),
+    };
+    await tester.tap(find.byKey(ValueKey(key)));
+    await tester.pumpAndSettle();
   }
 
   testWidgets('shows the local-first home screen', (tester) async {
@@ -189,6 +219,10 @@ void main() {
     expect(find.text('Export backup'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
+    expect(find.text('Cloud save preview'), findsOneWidget);
+    expect(find.text('No cloud save yet'), findsOneWidget);
+    expect(find.text('Save now'), findsOneWidget);
+    expect(find.text('Restore cloud save'), findsOneWidget);
     expect(find.text('Recently deleted'), findsOneWidget);
     expect(find.text('Clear all local data'), findsOneWidget);
   });
@@ -526,13 +560,105 @@ void main() {
     expect(find.text('Restored System'), findsOneWidget);
   });
 
+  testWidgets('saves and restores cloud save preview from settings', (
+    tester,
+  ) async {
+    final seeded = AppSnapshot.seeded();
+    final sourceSnapshot = seeded.copyWith(
+      profile: seeded.profile.copyWith(
+        displayName: 'Cloud Source',
+        updatedAt: DateTime(2026, 6, 21),
+      ),
+    );
+    final targetSnapshot = seeded.copyWith(
+      profile: seeded.profile.copyWith(
+        displayName: 'Local Device',
+        updatedAt: DateTime(2026, 6, 22),
+      ),
+      members: seeded.members
+          .map(
+            (member) => member.id == 'member-mara'
+                ? member.copyWith(archived: true)
+                : member,
+          )
+          .toList(),
+      frontingMemberIds: const [],
+    );
+    final cloudSaveAdapter = MemoryCloudSaveAdapter();
+
+    await pumpApp(
+      tester,
+      store: MemoryAppStore(sourceSnapshot),
+      cloudSaveAdapter: cloudSaveAdapter,
+      cloudSavePayloadEncoder: const _ReversingCloudSavePayloadEncoder(),
+    );
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Save now');
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Cloud save preview saved'), findsOneWidget);
+    expect(await cloudSaveAdapter.latestMetadata(), isNotNull);
+    expect(
+      (await cloudSaveAdapter.downloadLatest())?.payload.encryption.algorithm,
+      'test-reverse',
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+
+    final targetStore = MemoryAppStore(targetSnapshot);
+    await pumpApp(
+      tester,
+      store: targetStore,
+      cloudSaveAdapter: cloudSaveAdapter,
+      cloudSavePayloadDecoder: _reverseCloudSavePayload,
+    );
+
+    expect(find.text('Local Device'), findsOneWidget);
+    expect(find.text('Mara'), findsNothing);
+
+    await tester.tap(find.widgetWithText(InputChip, 'Social'));
+    await tester.pumpAndSettle();
+    expect(find.text('Best for calls and errands.'), findsOneWidget);
+    expect(find.text('Keeps the day moving.'), findsNothing);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Saved '), findsWidgets);
+    await tapSettingsTile(tester, 'Restore cloud save');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Restore backup?'), findsOneWidget);
+    expect(find.text('Cloud Source'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Restore'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cloud Source'), findsOneWidget);
+    expect(find.text('Mara'), findsWidgets);
+    expect(find.text('Keeps the day moving.'), findsOneWidget);
+    expect((await targetStore.load())?.profile.displayName, 'Cloud Source');
+  });
+
   testWidgets('records fronting sessions when a member fronts', (tester) async {
     final seeded = AppSnapshot.seeded();
     final store = MemoryAppStore(seeded);
     final sol = seeded.members[1];
     await pumpApp(tester, store: store);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Front').first);
+    final solTile = find
+        .ancestor(
+          of: find.text('Best for calls and errands.'),
+          matching: find.byType(Card),
+        )
+        .first;
+    await tester.tap(
+      find.descendant(
+        of: solTile,
+        matching: find.widgetWithText(FilledButton, 'Front'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Sol - Started fronting'), findsWidgets);
@@ -542,7 +668,12 @@ void main() {
     expect(activeSnapshot?.frontSessions.first.memberId, sol.id);
     expect(activeSnapshot?.frontSessions.first.isOpen, isTrue);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Fronting').last);
+    await tester.tap(
+      find.descendant(
+        of: solTile,
+        matching: find.widgetWithText(FilledButton, 'Fronting'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     final closedSnapshot = await store.load();
@@ -663,6 +794,71 @@ void main() {
     expect(find.text('Likes quiet rooms.'), findsNothing);
   });
 
+  testWidgets('sorts members from the members toolbar', (tester) async {
+    final seeded = AppSnapshot.seeded(DateTime(2026, 6, 18));
+    final sessions = [
+      FrontSession(
+        id: 'session-mara',
+        memberId: 'member-mara',
+        memberName: 'Mara',
+        startedAt: DateTime(2026, 6, 19, 8),
+        endedAt: DateTime(2026, 6, 19, 10),
+      ),
+      FrontSession(
+        id: 'session-sol',
+        memberId: 'member-sol',
+        memberName: 'Sol',
+        startedAt: DateTime(2026, 6, 20, 9),
+        endedAt: DateTime(2026, 6, 20, 13),
+      ),
+      FrontSession(
+        id: 'session-river',
+        memberId: 'member-river',
+        memberName: 'River',
+        startedAt: DateTime(2026, 6, 21, 10),
+        endedAt: DateTime(2026, 6, 21, 11),
+      ),
+    ];
+
+    await pumpApp(
+      tester,
+      size: const Size(1200, 1100),
+      snapshot: seeded.copyWith(
+        frontingMemberIds: const [],
+        frontSessions: sessions,
+      ),
+    );
+
+    expect(find.byTooltip('Sort members: A-Z'), findsOneWidget);
+    expectMemberNotesInOrder(tester, [
+      'Keeps the day moving.',
+      'Likes quiet rooms.',
+      'Best for calls and errands.',
+    ]);
+
+    await tester.tap(find.byTooltip('Sort members: A-Z'));
+    await tester.pumpAndSettle();
+    await tapCheckedMenuOption(tester, 'Recently fronted');
+
+    expect(find.byTooltip('Sort members: Recently fronted'), findsOneWidget);
+    expectMemberNotesInOrder(tester, [
+      'Likes quiet rooms.',
+      'Best for calls and errands.',
+      'Keeps the day moving.',
+    ]);
+
+    await tester.tap(find.byTooltip('Sort members: Recently fronted'));
+    await tester.pumpAndSettle();
+    await tapCheckedMenuOption(tester, 'Most used');
+
+    expect(find.byTooltip('Sort members: Most used'), findsOneWidget);
+    expectMemberNotesInOrder(tester, [
+      'Best for calls and errands.',
+      'Keeps the day moving.',
+      'Likes quiet rooms.',
+    ]);
+  });
+
   testWidgets('opens group view from a member group label', (tester) async {
     await pumpApp(tester);
 
@@ -711,6 +907,27 @@ void main() {
     expect(tester.getTopRight(groupFilterChip).dx, lessThanOrEqualTo(430));
     expect(find.text('Keeps the day moving.'), findsOneWidget);
   });
+}
+
+class _ReversingCloudSavePayloadEncoder implements CloudSavePayloadEncoder {
+  const _ReversingCloudSavePayloadEncoder();
+
+  @override
+  CloudSaveEncodedPayload encode(List<int> backupBytes) {
+    return CloudSaveEncodedPayload(
+      bytes: backupBytes.reversed.toList(),
+      compression: cloudSaveCompressionNone,
+      encryption: const CloudSaveEncryptionDescriptor(
+        algorithm: 'test-reverse',
+        keyDerivationAlgorithm: 'test-only',
+        keyId: 'widget-test-key',
+      ),
+    );
+  }
+}
+
+List<int> _reverseCloudSavePayload(CloudSavePayload _, List<int> payloadBytes) {
+  return payloadBytes.reversed.toList();
 }
 
 class FakeAppAuthenticator implements AppAuthenticator {

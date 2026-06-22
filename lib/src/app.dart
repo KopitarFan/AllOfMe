@@ -4,11 +4,17 @@ class AllOfMeApp extends StatefulWidget {
   const AllOfMeApp({
     super.key,
     required this.store,
+    this.cloudSaveAdapter = const SharedPreferencesCloudSaveAdapter(),
+    this.cloudSavePayloadEncoder,
+    this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
     this.initialThemeMode = ThemeMode.light,
   });
 
   final AppStore store;
+  final CloudSaveAdapter cloudSaveAdapter;
+  final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
+  final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
   final ThemeMode initialThemeMode;
 
@@ -69,6 +75,9 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
       themeMode: _themeMode,
       home: HomeScreen(
         store: widget.store,
+        cloudSaveAdapter: widget.cloudSaveAdapter,
+        cloudSavePayloadEncoder: widget.cloudSavePayloadEncoder,
+        cloudSavePayloadDecoder: widget.cloudSavePayloadDecoder,
         authenticator: widget.authenticator,
         themeMode: _themeMode,
         onThemeModeChanged: _setThemeMode,

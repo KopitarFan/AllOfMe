@@ -10,7 +10,9 @@ class _HomeContent extends StatelessWidget {
     required this.onEditMember,
     required this.onEditGroup,
     required this.selectedGroupId,
+    required this.memberSortMode,
     required this.onSelectGroup,
+    required this.onMemberSortModeChanged,
     required this.onToggleFront,
     required this.onAddTimelineNote,
     required this.onShowInsights,
@@ -25,7 +27,9 @@ class _HomeContent extends StatelessWidget {
   final ValueChanged<Member?> onEditMember;
   final ValueChanged<MemberGroup?> onEditGroup;
   final String? selectedGroupId;
+  final _MemberSortMode memberSortMode;
   final ValueChanged<String?> onSelectGroup;
+  final ValueChanged<_MemberSortMode> onMemberSortModeChanged;
   final ValueChanged<Member> onToggleFront;
   final VoidCallback onAddTimelineNote;
   final VoidCallback onShowInsights;
@@ -67,7 +71,9 @@ class _HomeContent extends StatelessWidget {
                   onEditMember: onEditMember,
                   onEditGroup: onEditGroup,
                   selectedGroupId: selectedGroupId,
+                  sortMode: memberSortMode,
                   onSelectGroup: onSelectGroup,
+                  onSortModeChanged: onMemberSortModeChanged,
                   onToggleFront: onToggleFront,
                 ),
               ),
@@ -88,7 +94,9 @@ class _HomeContent extends StatelessWidget {
             onEditMember: onEditMember,
             onEditGroup: onEditGroup,
             selectedGroupId: selectedGroupId,
+            sortMode: memberSortMode,
             onSelectGroup: onSelectGroup,
+            onSortModeChanged: onMemberSortModeChanged,
             onToggleFront: onToggleFront,
           ),
           const SizedBox(height: 18),

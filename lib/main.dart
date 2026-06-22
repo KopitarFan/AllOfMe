@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_lock.dart';
+import 'cloud_save.dart';
 import 'models.dart';
 import 'storage.dart';
 import 'storage_factory.dart';
