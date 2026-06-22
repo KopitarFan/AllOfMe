@@ -1,15 +1,19 @@
 part of '../main.dart';
 
+enum _RecoveryKeyDialogMode { save, restore }
+
 class _SettingsPrivacyDialog extends StatelessWidget {
   const _SettingsPrivacyDialog({
     required this.snapshot,
     required this.storeInfo,
+    required this.cloudSaveMetadata,
     required this.lockStatus,
     required this.themeMode,
   });
 
   final AppSnapshot snapshot;
   final AppStoreInfo storeInfo;
+  final CloudSaveMetadata? cloudSaveMetadata;
   final AppLockStatus lockStatus;
   final ThemeMode themeMode;
 
@@ -127,6 +131,51 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   onTap: () => Navigator.of(
                     context,
                   ).pop(_SettingsPrivacyAction.pasteBackupJson),
+                ),
+                const SizedBox(height: 18),
+                const _SettingsSectionTitle('Cloud save preview'),
+                const _SettingsNotice(
+                  icon: Icons.cloud_queue_outlined,
+                  title: 'Preview only',
+                  message:
+                      'This encrypts a CloudSavePackage with a recovery key and stores it locally until the server exists.',
+                ),
+                _SafetyRow(
+                  label: 'Status',
+                  value: cloudSaveMetadata == null
+                      ? 'No cloud save yet'
+                      : 'Saved ${_formatDateTime(cloudSaveMetadata!.createdAt)}',
+                ),
+                if (cloudSaveMetadata != null) ...[
+                  _SafetyRow(
+                    label: 'Schema',
+                    value: cloudSaveMetadata!.snapshotSchemaVersion.toString(),
+                  ),
+                  _SafetyRow(
+                    label: 'Size',
+                    value: '${cloudSaveMetadata!.payloadByteCount} bytes',
+                  ),
+                ],
+                _SettingsActionTile(
+                  icon: Icons.cloud_upload_outlined,
+                  title: 'Save now',
+                  subtitle:
+                      'Encrypt and create a local mock cloud save from this device.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.saveCloudSave),
+                ),
+                _SettingsActionTile(
+                  icon: Icons.cloud_download_outlined,
+                  title: 'Restore cloud save',
+                  subtitle: cloudSaveMetadata == null
+                      ? 'Save this device before restoring.'
+                      : 'Restore the latest preview save.',
+                  onTap: cloudSaveMetadata == null
+                      ? null
+                      : () => Navigator.of(
+                          context,
+                        ).pop(_SettingsPrivacyAction.restoreCloudSave),
                 ),
                 const SizedBox(height: 18),
                 const _SettingsSectionTitle('Recovery'),
@@ -286,26 +335,28 @@ class _SettingsActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final iconColor = destructive ? colorScheme.error : colorScheme.primary;
+    final enabled = onTap != null;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
       minLeadingWidth: 32,
-      leading: Icon(icon, color: iconColor),
+      enabled: enabled,
+      leading: Icon(icon, color: enabled ? iconColor : null),
       title: Text(
         title,
-        style: destructive
+        style: destructive && enabled
             ? TextStyle(color: colorScheme.error, fontWeight: FontWeight.w700)
             : null,
       ),
       subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: enabled ? const Icon(Icons.chevron_right) : null,
       onTap: onTap,
     );
   }
@@ -531,6 +582,156 @@ class _BackupDialog extends StatelessWidget {
           },
           icon: const Icon(Icons.copy),
           label: const Text('Copy'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CloudSaveRecoveryKeyDialog extends StatefulWidget {
+  const _CloudSaveRecoveryKeyDialog({required this.mode});
+
+  final _RecoveryKeyDialogMode mode;
+
+  @override
+  State<_CloudSaveRecoveryKeyDialog> createState() =>
+      _CloudSaveRecoveryKeyDialogState();
+}
+
+class _CloudSaveRecoveryKeyDialogState
+    extends State<_CloudSaveRecoveryKeyDialog> {
+  final TextEditingController _recoveryKeyController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+  String? _errorMessage;
+  bool _obscureText = true;
+
+  bool get _isSaveMode => widget.mode == _RecoveryKeyDialogMode.save;
+
+  @override
+  void dispose() {
+    _recoveryKeyController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final rawPassphrase = _recoveryKeyController.text;
+    if (_isSaveMode && rawPassphrase.trim() != _confirmController.text.trim()) {
+      setState(() {
+        _errorMessage = 'Recovery keys do not match.';
+      });
+      return;
+    }
+
+    try {
+      Navigator.of(
+        context,
+      ).pop(CloudSaveRecoveryKey.fromPassphrase(rawPassphrase));
+    } on FormatException catch (error) {
+      setState(() {
+        _errorMessage = error.message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _isSaveMode ? 'Set recovery key' : 'Enter recovery key';
+    final message = _isSaveMode
+        ? 'Choose a phrase you can enter on another device. All Of Me does not store this phrase.'
+        : 'Enter the phrase used when this cloud save was created.';
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.key_outlined),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title)),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _recoveryKeyController,
+              autofocus: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              keyboardType: TextInputType.visiblePassword,
+              obscureText: _obscureText,
+              smartDashesType: SmartDashesType.disabled,
+              smartQuotesType: SmartQuotesType.disabled,
+              textCapitalization: TextCapitalization.none,
+              decoration: InputDecoration(
+                labelText: 'Recovery key',
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _obscureText = !_obscureText;
+                    });
+                  },
+                  icon: Icon(
+                    _obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  tooltip: _obscureText
+                      ? 'Show recovery key'
+                      : 'Hide recovery key',
+                ),
+              ),
+              onSubmitted: (_) {
+                if (!_isSaveMode) {
+                  _submit();
+                }
+              },
+            ),
+            if (_isSaveMode) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmController,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.visiblePassword,
+                obscureText: _obscureText,
+                smartDashesType: SmartDashesType.disabled,
+                smartQuotesType: SmartQuotesType.disabled,
+                textCapitalization: TextCapitalization.none,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm recovery key',
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              'Use at least $cloudSaveRecoveryKeyMinLength characters.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: Icon(_isSaveMode ? Icons.cloud_upload_outlined : Icons.key),
+          label: Text(_isSaveMode ? 'Save encrypted' : 'Unlock'),
         ),
       ],
     );

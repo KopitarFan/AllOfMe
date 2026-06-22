@@ -1,18 +1,155 @@
 part of '../main.dart';
 
-List<Member> _visibleMembers(AppSnapshot snapshot, String? selectedGroupId) {
+enum _MemberSortMode { nameAscending, recentlyFronted, mostUsed }
+
+extension _MemberSortModeLabel on _MemberSortMode {
+  String get label {
+    return switch (this) {
+      _MemberSortMode.nameAscending => 'A-Z',
+      _MemberSortMode.recentlyFronted => 'Recently fronted',
+      _MemberSortMode.mostUsed => 'Most used',
+    };
+  }
+
+  IconData get icon {
+    return switch (this) {
+      _MemberSortMode.nameAscending => Icons.sort_by_alpha,
+      _MemberSortMode.recentlyFronted => Icons.history,
+      _MemberSortMode.mostUsed => Icons.timer_outlined,
+    };
+  }
+}
+
+List<Member> _visibleMembers(
+  AppSnapshot snapshot,
+  String? selectedGroupId,
+  _MemberSortMode sortMode,
+) {
   final activeMembers = snapshot.activeMembers;
-  if (selectedGroupId == null) {
-    return activeMembers;
+  final filteredMembers = selectedGroupId == null
+      ? activeMembers
+      : selectedGroupId == _frontingFilterId
+      ? activeMembers
+            .where((member) => snapshot.frontingMemberIds.contains(member.id))
+            .toList(growable: false)
+      : activeMembers
+            .where((member) => member.groupIds.contains(selectedGroupId))
+            .toList(growable: false);
+
+  return _sortMembers(filteredMembers, snapshot, sortMode);
+}
+
+List<Member> _sortMembers(
+  List<Member> members,
+  AppSnapshot snapshot,
+  _MemberSortMode sortMode,
+) {
+  final sortedMembers = members.toList(growable: false);
+  final now = DateTime.now();
+  final latestFrontedAtByMemberId = _latestFrontedAtByMemberId(
+    snapshot.frontSessions,
+  );
+  final frontDurationByMemberId = _frontDurationByMemberId(
+    snapshot.frontSessions,
+    now,
+  );
+
+  sortedMembers.sort((first, second) {
+    return switch (sortMode) {
+      _MemberSortMode.nameAscending => _compareMembersByName(first, second),
+      _MemberSortMode.recentlyFronted => _compareMembersByRecentFront(
+        first,
+        second,
+        latestFrontedAtByMemberId,
+      ),
+      _MemberSortMode.mostUsed => _compareMembersByFrontDuration(
+        first,
+        second,
+        frontDurationByMemberId,
+      ),
+    };
+  });
+
+  return sortedMembers;
+}
+
+int _compareMembersByName(Member first, Member second) {
+  final firstName = first.name.trim().toLowerCase();
+  final secondName = second.name.trim().toLowerCase();
+  final nameComparison = firstName.compareTo(secondName);
+  if (nameComparison != 0) {
+    return nameComparison;
   }
-  if (selectedGroupId == _frontingFilterId) {
-    return activeMembers
-        .where((member) => snapshot.frontingMemberIds.contains(member.id))
-        .toList(growable: false);
+  return first.id.compareTo(second.id);
+}
+
+int _compareMembersByRecentFront(
+  Member first,
+  Member second,
+  Map<String, DateTime> latestFrontedAtByMemberId,
+) {
+  final firstStartedAt = latestFrontedAtByMemberId[first.id];
+  final secondStartedAt = latestFrontedAtByMemberId[second.id];
+
+  if (firstStartedAt == null && secondStartedAt != null) {
+    return 1;
   }
-  return activeMembers
-      .where((member) => member.groupIds.contains(selectedGroupId))
-      .toList(growable: false);
+  if (firstStartedAt != null && secondStartedAt == null) {
+    return -1;
+  }
+  if (firstStartedAt != null && secondStartedAt != null) {
+    final recentComparison = secondStartedAt.compareTo(firstStartedAt);
+    if (recentComparison != 0) {
+      return recentComparison;
+    }
+  }
+  return _compareMembersByName(first, second);
+}
+
+int _compareMembersByFrontDuration(
+  Member first,
+  Member second,
+  Map<String, Duration> frontDurationByMemberId,
+) {
+  final firstDuration = frontDurationByMemberId[first.id] ?? Duration.zero;
+  final secondDuration = frontDurationByMemberId[second.id] ?? Duration.zero;
+  final durationComparison = secondDuration.inMicroseconds.compareTo(
+    firstDuration.inMicroseconds,
+  );
+  if (durationComparison != 0) {
+    return durationComparison;
+  }
+  return _compareMembersByName(first, second);
+}
+
+Map<String, DateTime> _latestFrontedAtByMemberId(
+  List<FrontSession> frontSessions,
+) {
+  final latestFrontedAtByMemberId = <String, DateTime>{};
+  for (final session in frontSessions) {
+    final latestStartedAt = latestFrontedAtByMemberId[session.memberId];
+    if (latestStartedAt == null || session.startedAt.isAfter(latestStartedAt)) {
+      latestFrontedAtByMemberId[session.memberId] = session.startedAt;
+    }
+  }
+  return latestFrontedAtByMemberId;
+}
+
+Map<String, Duration> _frontDurationByMemberId(
+  List<FrontSession> frontSessions,
+  DateTime now,
+) {
+  final frontDurationByMemberId = <String, Duration>{};
+  for (final session in frontSessions) {
+    frontDurationByMemberId[session.memberId] =
+        (frontDurationByMemberId[session.memberId] ?? Duration.zero) +
+        session.durationUntil(now);
+  }
+  return frontDurationByMemberId;
+}
+
+List<Member> _archivedMembers(AppSnapshot snapshot, _MemberSortMode sortMode) {
+  return _sortMembers(snapshot.archivedMembers, snapshot, sortMode);
 }
 
 extension _FirstOrNull<T> on Iterable<T> {
@@ -25,7 +162,9 @@ class _MembersSection extends StatelessWidget {
     required this.onEditMember,
     required this.onEditGroup,
     required this.selectedGroupId,
+    required this.sortMode,
     required this.onSelectGroup,
+    required this.onSortModeChanged,
     required this.onToggleFront,
   });
 
@@ -33,14 +172,16 @@ class _MembersSection extends StatelessWidget {
   final ValueChanged<Member?> onEditMember;
   final ValueChanged<MemberGroup?> onEditGroup;
   final String? selectedGroupId;
+  final _MemberSortMode sortMode;
   final ValueChanged<String?> onSelectGroup;
+  final ValueChanged<_MemberSortMode> onSortModeChanged;
   final ValueChanged<Member> onToggleFront;
 
   @override
   Widget build(BuildContext context) {
     final activeGroups = snapshot.activeGroups;
-    final visibleMembers = _visibleMembers(snapshot, selectedGroupId);
-    final archivedMembers = snapshot.archivedMembers;
+    final visibleMembers = _visibleMembers(snapshot, selectedGroupId, sortMode);
+    final archivedMembers = _archivedMembers(snapshot, sortMode);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,6 +192,7 @@ class _MembersSection extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _MemberSortMenu(value: sortMode, onChanged: onSortModeChanged),
               IconButton(
                 onPressed: () => onEditGroup(null),
                 icon: const Icon(Icons.folder_shared_outlined),
@@ -147,6 +289,32 @@ class _MembersSection extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _MemberSortMenu extends StatelessWidget {
+  const _MemberSortMenu({required this.value, required this.onChanged});
+
+  final _MemberSortMode value;
+  final ValueChanged<_MemberSortMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_MemberSortMode>(
+      icon: Icon(value.icon),
+      tooltip: 'Sort members: ${value.label}',
+      onSelected: onChanged,
+      itemBuilder: (context) => _MemberSortMode.values
+          .map(
+            (mode) => CheckedPopupMenuItem<_MemberSortMode>(
+              key: ValueKey('member-sort-${mode.name}'),
+              value: mode,
+              checked: mode == value,
+              child: Text(mode.label),
+            ),
+          )
+          .toList(),
     );
   }
 }

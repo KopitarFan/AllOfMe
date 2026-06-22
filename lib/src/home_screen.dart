@@ -4,6 +4,9 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.store,
+    required this.cloudSaveAdapter,
+    required this.cloudSavePayloadEncoder,
+    required this.cloudSavePayloadDecoder,
     required this.authenticator,
     required this.themeMode,
     required this.onThemeModeChanged,
@@ -11,6 +14,9 @@ class HomeScreen extends StatefulWidget {
   });
 
   final AppStore store;
+  final CloudSaveAdapter cloudSaveAdapter;
+  final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
+  final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
@@ -29,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _authInProgress = false;
   String? _lockError;
   String? _selectedGroupId;
+  _MemberSortMode _memberSortMode = _MemberSortMode.nameAscending;
   bool _showFirstRunGuide = false;
 
   @override
@@ -431,6 +438,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  void _setMemberSortMode(_MemberSortMode sortMode) {
+    setState(() {
+      _memberSortMode = sortMode;
+    });
+  }
+
   Future<void> _toggleFront(Member member) async {
     final snapshot = _snapshot;
     if (snapshot == null) {
@@ -751,6 +764,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       final info = await widget.store.info();
       final lockStatus = await widget.authenticator.status();
+      final cloudSaveMetadata = await widget.cloudSaveAdapter.latestMetadata();
       if (!mounted) {
         return;
       }
@@ -763,6 +777,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => _SettingsPrivacyDialog(
           snapshot: snapshot,
           storeInfo: info,
+          cloudSaveMetadata: cloudSaveMetadata,
           lockStatus: lockStatus,
           themeMode: widget.themeMode,
         ),
@@ -777,6 +792,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return;
         case _SettingsPrivacyAction.pasteBackupJson:
           await _pasteBackupJson();
+          return;
+        case _SettingsPrivacyAction.saveCloudSave:
+          await _saveCloudSave();
+          return;
+        case _SettingsPrivacyAction.restoreCloudSave:
+          await _restoreCloudSave();
           return;
         case _SettingsPrivacyAction.openRecentlyDeleted:
           await _showRecentlyDeleted();
@@ -825,6 +846,143 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context) =>
           _BetaFeedbackDialog(snapshot: snapshot, storeInfo: info),
     );
+  }
+
+  Future<void> _saveCloudSave() async {
+    final snapshot = _snapshot;
+    if (snapshot == null) {
+      return;
+    }
+
+    try {
+      final payloadEncoder = await _cloudSaveEncoderForSave();
+      if (payloadEncoder == null) {
+        return;
+      }
+
+      setState(() {
+        _saving = true;
+      });
+
+      final package = await CloudSavePackage.fromBackupJson(
+        snapshot.toBackupJson(),
+        deviceLabel: 'This device',
+        payloadEncoder: payloadEncoder,
+      );
+      final metadata = await widget.cloudSaveAdapter.saveNow(package);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cloud save preview saved ${_formatDateTime(metadata.createdAt)}.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cloud save preview failed.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Future<CloudSavePayloadEncoder?> _cloudSaveEncoderForSave() async {
+    final injectedEncoder = widget.cloudSavePayloadEncoder;
+    if (injectedEncoder != null) {
+      return injectedEncoder;
+    }
+
+    final recoveryKey = await showDialog<CloudSaveRecoveryKey>(
+      context: context,
+      builder: (context) =>
+          const _CloudSaveRecoveryKeyDialog(mode: _RecoveryKeyDialogMode.save),
+    );
+    if (recoveryKey == null) {
+      return null;
+    }
+    return CloudSavePassphrasePayloadCipher(recoveryKey: recoveryKey);
+  }
+
+  Future<CloudSavePayloadDecoder?> _cloudSaveDecoderForRestore(
+    CloudSavePackage package,
+  ) async {
+    final injectedDecoder = widget.cloudSavePayloadDecoder;
+    if (injectedDecoder != null) {
+      return injectedDecoder;
+    }
+    if (!package.payload.requiresDecoder) {
+      return null;
+    }
+
+    final recoveryKey = await showDialog<CloudSaveRecoveryKey>(
+      context: context,
+      builder: (context) => const _CloudSaveRecoveryKeyDialog(
+        mode: _RecoveryKeyDialogMode.restore,
+      ),
+    );
+    if (recoveryKey == null) {
+      return null;
+    }
+    return CloudSavePassphrasePayloadCipher(recoveryKey: recoveryKey).decode;
+  }
+
+  Future<void> _restoreCloudSave() async {
+    try {
+      final package = await widget.cloudSaveAdapter.downloadLatest();
+      if (!mounted) {
+        return;
+      }
+      if (package == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No cloud save preview found.')),
+        );
+        return;
+      }
+
+      final decoder = await _cloudSaveDecoderForRestore(package);
+      if (!mounted || (package.payload.requiresDecoder && decoder == null)) {
+        return;
+      }
+
+      final validation = await package.validateForRestore(decoder: decoder);
+      if (!mounted) {
+        return;
+      }
+      if (!validation.isValid || validation.backupJson == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              package.payload.requiresDecoder
+                  ? 'Recovery key did not unlock this cloud save.'
+                  : 'Cloud save preview could not restore.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      await _restoreBackup(
+        validation.backupJson!,
+        successMessage: 'Cloud save preview restored.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cloud save preview could not restore.')),
+      );
+    }
   }
 
   Future<void> _clearLocalData() async {
@@ -912,7 +1070,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> _restoreBackup(String rawBackup) async {
+  Future<bool> _restoreBackup(
+    String rawBackup, {
+    String successMessage = 'Backup imported.',
+  }) async {
     final snapshot = _snapshot;
     if (snapshot == null) {
       return false;
@@ -935,9 +1096,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await widget.store.createBackup(snapshot);
       await _persist(imported);
       if (mounted) {
+        setState(() {
+          _selectedGroupId = null;
+        });
+      }
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Backup imported.')));
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
       }
       return true;
     } catch (error) {
@@ -1038,7 +1204,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onEditMember: _showMemberForm,
                 onEditGroup: _showGroupForm,
                 selectedGroupId: _selectedGroupId,
+                memberSortMode: _memberSortMode,
                 onSelectGroup: _selectGroup,
+                onMemberSortModeChanged: _setMemberSortMode,
                 onToggleFront: _toggleFront,
                 onAddTimelineNote: _addTimelineNote,
                 onShowInsights: _showInsights,
