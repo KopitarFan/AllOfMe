@@ -527,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _addTimelineNote() async {
+  Future<void> _addTimelineNote({bool showNotesAction = true}) async {
     final snapshot = _snapshot;
     if (snapshot == null) {
       return;
@@ -556,6 +556,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ],
       ),
     );
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Note saved.'),
+        action: showNotesAction
+            ? SnackBarAction(label: 'View notes', onPressed: _showNotes)
+            : null,
+      ),
+    );
   }
 
   Future<void> _deleteTimelineEntry(TimelineEntry entry) async {
@@ -580,11 +591,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Timeline entry moved to Recently Deleted.'),
-      ),
-    );
+    final deletedMessage = entry.isNote
+        ? 'Note moved to Recently Deleted.'
+        : 'Timeline entry moved to Recently Deleted.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(deletedMessage)));
   }
 
   Future<void> _showRecentlyDeleted() async {
@@ -607,6 +619,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       await _restoreDeletedItem(item);
     }
+  }
+
+  Future<void> _showNotes() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => _NotesScreen(
+          entries: () => _snapshot?.activeNotes ?? const <TimelineEntry>[],
+          onAddNote: () async {
+            await _addTimelineNote(showNotesAction: false);
+          },
+          onDeleteNote: (entry) async {
+            await _deleteTimelineEntry(entry);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTimeline() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => _TimelineEntriesScreen(
+          entries: () =>
+              _snapshot?.activeTimelineEntries ?? const <TimelineEntry>[],
+          onDeleteEntry: (entry) async {
+            await _deleteTimelineEntry(entry);
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _restoreDeletedItem(_DeletedItemReference item) async {
@@ -1167,6 +1209,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               actions: isLocked
                   ? null
                   : [
+                      IconButton(
+                        onPressed: snapshot == null ? null : _showNotes,
+                        icon: const Icon(Icons.sticky_note_2_outlined),
+                        tooltip: 'Notes',
+                      ),
                       if (showMenuLabels)
                         Tooltip(
                           message: 'Insights',
@@ -1244,6 +1291,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onMemberSortModeChanged: _setMemberSortMode,
                 onToggleFront: _toggleFront,
                 onAddTimelineNote: _addTimelineNote,
+                onShowTimeline: _showTimeline,
                 onShowInsights: _showInsights,
                 onDeleteTimelineEntry: _deleteTimelineEntry,
               ),

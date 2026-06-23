@@ -15,6 +15,7 @@ class _HomeContent extends StatelessWidget {
     required this.onMemberSortModeChanged,
     required this.onToggleFront,
     required this.onAddTimelineNote,
+    required this.onShowTimeline,
     required this.onShowInsights,
     required this.onDeleteTimelineEntry,
   });
@@ -32,6 +33,7 @@ class _HomeContent extends StatelessWidget {
   final ValueChanged<_MemberSortMode> onMemberSortModeChanged;
   final ValueChanged<Member> onToggleFront;
   final VoidCallback onAddTimelineNote;
+  final VoidCallback onShowTimeline;
   final VoidCallback onShowInsights;
   final ValueChanged<TimelineEntry> onDeleteTimelineEntry;
 
@@ -80,9 +82,9 @@ class _HomeContent extends StatelessWidget {
               const SizedBox(width: 18),
               Expanded(
                 flex: 2,
-                child: _TimelineSection(
-                  events: snapshot.activeTimeline,
-                  onAddNote: onAddTimelineNote,
+                child: _RecentTimelineSection(
+                  events: snapshot.activeTimelineEntries,
+                  onViewAll: onShowTimeline,
                   onDeleteEntry: onDeleteTimelineEntry,
                 ),
               ),
@@ -100,9 +102,9 @@ class _HomeContent extends StatelessWidget {
             onToggleFront: onToggleFront,
           ),
           const SizedBox(height: 18),
-          _TimelineSection(
-            events: snapshot.activeTimeline,
-            onAddNote: onAddTimelineNote,
+          _RecentTimelineSection(
+            events: snapshot.activeTimelineEntries,
+            onViewAll: onShowTimeline,
             onDeleteEntry: onDeleteTimelineEntry,
           ),
         ],
@@ -288,7 +290,7 @@ class _DailyOverview extends StatelessWidget {
     final frontingMembers = snapshot.members
         .where((member) => snapshot.frontingMemberIds.contains(member.id))
         .toList(growable: false);
-    final latestEntry = snapshot.activeTimeline.firstOrNull;
+    final latestEntry = snapshot.activeTimelineEntries.firstOrNull;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -376,7 +378,7 @@ class _DailyOverview extends StatelessWidget {
                     ? 'No timeline entries'
                     : _entryTitle(latestEntry),
                 detail: latestEntry == null
-                    ? 'Add a note or front change'
+                    ? 'Front changes will show here'
                     : _entrySubtitle(latestEntry),
               ),
             ],

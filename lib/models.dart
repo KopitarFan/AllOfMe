@@ -278,6 +278,7 @@ class TimelineEntry {
   final DateTime? deletedAt;
 
   bool get isDeleted => deletedAt != null;
+  bool get isNote => type == 'note';
 
   TimelineEntry copyWith({Object? deletedAt = _copySentinel}) {
     return TimelineEntry(
@@ -446,8 +447,20 @@ class AppSnapshot {
   List<TimelineEntry> get activeTimeline =>
       timeline.where((entry) => !entry.isDeleted).toList(growable: false);
 
+  List<TimelineEntry> get activeTimelineEntries =>
+      activeTimeline.where((entry) => !entry.isNote).toList(growable: false);
+
+  List<TimelineEntry> get activeNotes =>
+      activeTimeline.where((entry) => entry.isNote).toList(growable: false);
+
   List<TimelineEntry> get deletedTimeline =>
       timeline.where((entry) => entry.isDeleted).toList(growable: false);
+
+  List<TimelineEntry> get deletedTimelineEntries =>
+      deletedTimeline.where((entry) => !entry.isNote).toList(growable: false);
+
+  List<TimelineEntry> get deletedNotes =>
+      deletedTimeline.where((entry) => entry.isNote).toList(growable: false);
 
   AppSnapshot copyWith({
     SystemProfile? profile,
