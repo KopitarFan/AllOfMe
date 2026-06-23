@@ -32,6 +32,44 @@ pnpm test
 pnpm build
 ```
 
+GitHub Actions runs the same checks, plus a production Docker image build, in
+`Server CI`.
+
+## Docker
+
+Build the production image from the server directory:
+
+```sh
+docker build -t all-of-me-server:local .
+```
+
+Run it locally with persistent cloud-save storage mounted from the host:
+
+```sh
+mkdir -p .data/docker-cloud-saves
+docker run --rm \
+  -p 3000:3000 \
+  -v "$(pwd)/.data/docker-cloud-saves:/app/data/cloud-saves" \
+  all-of-me-server:local
+```
+
+For a Vultr host, use Docker Compose with a persistent host directory:
+
+```sh
+cp .env.production.example .env.production
+sudo mkdir -p /opt/allofme/cloud-saves
+sudo chown -R 1000:1000 /opt/allofme/cloud-saves
+docker compose --env-file .env.production -f docker-compose.production.yml up -d
+```
+
+The production Compose file expects `ALLOFME_SERVER_IMAGE` to point at the
+image to run. During local testing, override it with `all-of-me-server:local`.
+
+```sh
+ALLOFME_SERVER_IMAGE=all-of-me-server:local \
+  docker compose --env-file .env.production -f docker-compose.production.yml up -d
+```
+
 ## Current Endpoints
 
 - `GET /healthz` returns `{ "ok": true }`.

@@ -1,0 +1,11 @@
+.data/
+.env
+.env.production
+coverage/
+dist/
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+Dockerfile
+docker-compose*.yml
+docker-compose*.yaml
