@@ -82,6 +82,9 @@ void main() {
     final snapshot = AppSnapshot.seeded();
     final member = snapshot.members.first.copyWith(
       profileImageDataUri: imageDataUri,
+      profileImageScale: 2.2,
+      profileImageOffsetX: 0.35,
+      profileImageOffsetY: -0.2,
     );
     final store = LocalFileAppStore(rootDirectory: tempDirectory);
 
@@ -100,13 +103,23 @@ void main() {
     expect(saved.members.single.profileImageDataUri, imageDataUri);
     expect(diskMember['profileImageId'], saved.members.single.profileImageId);
     expect(diskMember['profileImageDataUri'], isNull);
+    expect(diskMember['profileImageScale'], 2.2);
+    expect(diskMember['profileImageOffsetX'], 0.35);
+    expect(diskMember['profileImageOffsetY'], -0.2);
     expect(File(imagePath).existsSync(), isTrue);
     expect(reloaded?.members.single.profileImageDataUri, imageDataUri);
+    expect(reloaded?.members.single.profileImageScale, 2.2);
+    expect(reloaded?.members.single.profileImageOffsetX, 0.35);
+    expect(reloaded?.members.single.profileImageOffsetY, -0.2);
     expect(
       snapshotFromBackupJson(
         backup.contents,
       ).members.single.profileImageDataUri,
       imageDataUri,
+    );
+    expect(
+      snapshotFromBackupJson(backup.contents).members.single.profileImageScale,
+      2.2,
     );
   });
 }

@@ -674,6 +674,43 @@ class $MemberTableTable extends MemberTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _profileImageScaleMeta = const VerificationMeta(
+    'profileImageScale',
+  );
+  @override
+  late final GeneratedColumn<double> profileImageScale =
+      GeneratedColumn<double>(
+        'profile_image_scale',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(1.0),
+      );
+  static const VerificationMeta _profileImageOffsetXMeta =
+      const VerificationMeta('profileImageOffsetX');
+  @override
+  late final GeneratedColumn<double> profileImageOffsetX =
+      GeneratedColumn<double>(
+        'profile_image_offset_x',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.0),
+      );
+  static const VerificationMeta _profileImageOffsetYMeta =
+      const VerificationMeta('profileImageOffsetY');
+  @override
+  late final GeneratedColumn<double> profileImageOffsetY =
+      GeneratedColumn<double>(
+        'profile_image_offset_y',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.0),
+      );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -697,6 +734,9 @@ class $MemberTableTable extends MemberTable
     createdAt,
     updatedAt,
     profileImageId,
+    profileImageScale,
+    profileImageOffsetX,
+    profileImageOffsetY,
     sortOrder,
   ];
   @override
@@ -779,6 +819,33 @@ class $MemberTableTable extends MemberTable
         ),
       );
     }
+    if (data.containsKey('profile_image_scale')) {
+      context.handle(
+        _profileImageScaleMeta,
+        profileImageScale.isAcceptableOrUnknown(
+          data['profile_image_scale']!,
+          _profileImageScaleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('profile_image_offset_x')) {
+      context.handle(
+        _profileImageOffsetXMeta,
+        profileImageOffsetX.isAcceptableOrUnknown(
+          data['profile_image_offset_x']!,
+          _profileImageOffsetXMeta,
+        ),
+      );
+    }
+    if (data.containsKey('profile_image_offset_y')) {
+      context.handle(
+        _profileImageOffsetYMeta,
+        profileImageOffsetY.isAcceptableOrUnknown(
+          data['profile_image_offset_y']!,
+          _profileImageOffsetYMeta,
+        ),
+      );
+    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
@@ -830,6 +897,18 @@ class $MemberTableTable extends MemberTable
         DriftSqlType.string,
         data['${effectivePrefix}profile_image_id'],
       ),
+      profileImageScale: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}profile_image_scale'],
+      )!,
+      profileImageOffsetX: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}profile_image_offset_x'],
+      )!,
+      profileImageOffsetY: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}profile_image_offset_y'],
+      )!,
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -853,6 +932,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? profileImageId;
+  final double profileImageScale;
+  final double profileImageOffsetX;
+  final double profileImageOffsetY;
   final int sortOrder;
   const MemberRow({
     required this.id,
@@ -864,6 +946,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     required this.createdAt,
     required this.updatedAt,
     this.profileImageId,
+    required this.profileImageScale,
+    required this.profileImageOffsetX,
+    required this.profileImageOffsetY,
     required this.sortOrder,
   });
   @override
@@ -880,6 +965,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     if (!nullToAbsent || profileImageId != null) {
       map['profile_image_id'] = Variable<String>(profileImageId);
     }
+    map['profile_image_scale'] = Variable<double>(profileImageScale);
+    map['profile_image_offset_x'] = Variable<double>(profileImageOffsetX);
+    map['profile_image_offset_y'] = Variable<double>(profileImageOffsetY);
     map['sort_order'] = Variable<int>(sortOrder);
     return map;
   }
@@ -897,6 +985,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       profileImageId: profileImageId == null && nullToAbsent
           ? const Value.absent()
           : Value(profileImageId),
+      profileImageScale: Value(profileImageScale),
+      profileImageOffsetX: Value(profileImageOffsetX),
+      profileImageOffsetY: Value(profileImageOffsetY),
       sortOrder: Value(sortOrder),
     );
   }
@@ -916,6 +1007,13 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       profileImageId: serializer.fromJson<String?>(json['profileImageId']),
+      profileImageScale: serializer.fromJson<double>(json['profileImageScale']),
+      profileImageOffsetX: serializer.fromJson<double>(
+        json['profileImageOffsetX'],
+      ),
+      profileImageOffsetY: serializer.fromJson<double>(
+        json['profileImageOffsetY'],
+      ),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
   }
@@ -932,6 +1030,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'profileImageId': serializer.toJson<String?>(profileImageId),
+      'profileImageScale': serializer.toJson<double>(profileImageScale),
+      'profileImageOffsetX': serializer.toJson<double>(profileImageOffsetX),
+      'profileImageOffsetY': serializer.toJson<double>(profileImageOffsetY),
       'sortOrder': serializer.toJson<int>(sortOrder),
     };
   }
@@ -946,6 +1047,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<String?> profileImageId = const Value.absent(),
+    double? profileImageScale,
+    double? profileImageOffsetX,
+    double? profileImageOffsetY,
     int? sortOrder,
   }) => MemberRow(
     id: id ?? this.id,
@@ -959,6 +1063,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     profileImageId: profileImageId.present
         ? profileImageId.value
         : this.profileImageId,
+    profileImageScale: profileImageScale ?? this.profileImageScale,
+    profileImageOffsetX: profileImageOffsetX ?? this.profileImageOffsetX,
+    profileImageOffsetY: profileImageOffsetY ?? this.profileImageOffsetY,
     sortOrder: sortOrder ?? this.sortOrder,
   );
   MemberRow copyWithCompanion(MemberTableCompanion data) {
@@ -976,6 +1083,15 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       profileImageId: data.profileImageId.present
           ? data.profileImageId.value
           : this.profileImageId,
+      profileImageScale: data.profileImageScale.present
+          ? data.profileImageScale.value
+          : this.profileImageScale,
+      profileImageOffsetX: data.profileImageOffsetX.present
+          ? data.profileImageOffsetX.value
+          : this.profileImageOffsetX,
+      profileImageOffsetY: data.profileImageOffsetY.present
+          ? data.profileImageOffsetY.value
+          : this.profileImageOffsetY,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
@@ -992,6 +1108,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('profileImageId: $profileImageId, ')
+          ..write('profileImageScale: $profileImageScale, ')
+          ..write('profileImageOffsetX: $profileImageOffsetX, ')
+          ..write('profileImageOffsetY: $profileImageOffsetY, ')
           ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
@@ -1008,6 +1127,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     createdAt,
     updatedAt,
     profileImageId,
+    profileImageScale,
+    profileImageOffsetX,
+    profileImageOffsetY,
     sortOrder,
   );
   @override
@@ -1023,6 +1145,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.profileImageId == this.profileImageId &&
+          other.profileImageScale == this.profileImageScale &&
+          other.profileImageOffsetX == this.profileImageOffsetX &&
+          other.profileImageOffsetY == this.profileImageOffsetY &&
           other.sortOrder == this.sortOrder);
 }
 
@@ -1036,6 +1161,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> profileImageId;
+  final Value<double> profileImageScale;
+  final Value<double> profileImageOffsetX;
+  final Value<double> profileImageOffsetY;
   final Value<int> sortOrder;
   final Value<int> rowid;
   const MemberTableCompanion({
@@ -1048,6 +1176,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.profileImageId = const Value.absent(),
+    this.profileImageScale = const Value.absent(),
+    this.profileImageOffsetX = const Value.absent(),
+    this.profileImageOffsetY = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1061,6 +1192,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.profileImageId = const Value.absent(),
+    this.profileImageScale = const Value.absent(),
+    this.profileImageOffsetX = const Value.absent(),
+    this.profileImageOffsetY = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1080,6 +1214,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? profileImageId,
+    Expression<double>? profileImageScale,
+    Expression<double>? profileImageOffsetX,
+    Expression<double>? profileImageOffsetY,
     Expression<int>? sortOrder,
     Expression<int>? rowid,
   }) {
@@ -1093,6 +1230,11 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (profileImageId != null) 'profile_image_id': profileImageId,
+      if (profileImageScale != null) 'profile_image_scale': profileImageScale,
+      if (profileImageOffsetX != null)
+        'profile_image_offset_x': profileImageOffsetX,
+      if (profileImageOffsetY != null)
+        'profile_image_offset_y': profileImageOffsetY,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1108,6 +1250,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String?>? profileImageId,
+    Value<double>? profileImageScale,
+    Value<double>? profileImageOffsetX,
+    Value<double>? profileImageOffsetY,
     Value<int>? sortOrder,
     Value<int>? rowid,
   }) {
@@ -1121,6 +1266,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       profileImageId: profileImageId ?? this.profileImageId,
+      profileImageScale: profileImageScale ?? this.profileImageScale,
+      profileImageOffsetX: profileImageOffsetX ?? this.profileImageOffsetX,
+      profileImageOffsetY: profileImageOffsetY ?? this.profileImageOffsetY,
       sortOrder: sortOrder ?? this.sortOrder,
       rowid: rowid ?? this.rowid,
     );
@@ -1156,6 +1304,19 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
     if (profileImageId.present) {
       map['profile_image_id'] = Variable<String>(profileImageId.value);
     }
+    if (profileImageScale.present) {
+      map['profile_image_scale'] = Variable<double>(profileImageScale.value);
+    }
+    if (profileImageOffsetX.present) {
+      map['profile_image_offset_x'] = Variable<double>(
+        profileImageOffsetX.value,
+      );
+    }
+    if (profileImageOffsetY.present) {
+      map['profile_image_offset_y'] = Variable<double>(
+        profileImageOffsetY.value,
+      );
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -1177,6 +1338,9 @@ class MemberTableCompanion extends UpdateCompanion<MemberRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('profileImageId: $profileImageId, ')
+          ..write('profileImageScale: $profileImageScale, ')
+          ..write('profileImageOffsetX: $profileImageOffsetX, ')
+          ..write('profileImageOffsetY: $profileImageOffsetY, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3580,6 +3744,9 @@ typedef $$MemberTableTableCreateCompanionBuilder =
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<String?> profileImageId,
+      Value<double> profileImageScale,
+      Value<double> profileImageOffsetX,
+      Value<double> profileImageOffsetY,
       Value<int> sortOrder,
       Value<int> rowid,
     });
@@ -3594,6 +3761,9 @@ typedef $$MemberTableTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<String?> profileImageId,
+      Value<double> profileImageScale,
+      Value<double> profileImageOffsetX,
+      Value<double> profileImageOffsetY,
       Value<int> sortOrder,
       Value<int> rowid,
     });
@@ -3700,6 +3870,21 @@ class $$MemberTableTableFilterComposer
 
   ColumnFilters<String> get profileImageId => $composableBuilder(
     column: $table.profileImageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get profileImageScale => $composableBuilder(
+    column: $table.profileImageScale,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get profileImageOffsetX => $composableBuilder(
+    column: $table.profileImageOffsetX,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get profileImageOffsetY => $composableBuilder(
+    column: $table.profileImageOffsetY,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3813,6 +3998,21 @@ class $$MemberTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get profileImageScale => $composableBuilder(
+    column: $table.profileImageScale,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get profileImageOffsetX => $composableBuilder(
+    column: $table.profileImageOffsetX,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get profileImageOffsetY => $composableBuilder(
+    column: $table.profileImageOffsetY,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -3856,6 +4056,21 @@ class $$MemberTableTableAnnotationComposer
 
   GeneratedColumn<String> get profileImageId => $composableBuilder(
     column: $table.profileImageId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get profileImageScale => $composableBuilder(
+    column: $table.profileImageScale,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get profileImageOffsetX => $composableBuilder(
+    column: $table.profileImageOffsetX,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get profileImageOffsetY => $composableBuilder(
+    column: $table.profileImageOffsetY,
     builder: (column) => column,
   );
 
@@ -3955,6 +4170,9 @@ class $$MemberTableTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> profileImageId = const Value.absent(),
+                Value<double> profileImageScale = const Value.absent(),
+                Value<double> profileImageOffsetX = const Value.absent(),
+                Value<double> profileImageOffsetY = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MemberTableCompanion(
@@ -3967,6 +4185,9 @@ class $$MemberTableTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 profileImageId: profileImageId,
+                profileImageScale: profileImageScale,
+                profileImageOffsetX: profileImageOffsetX,
+                profileImageOffsetY: profileImageOffsetY,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),
@@ -3981,6 +4202,9 @@ class $$MemberTableTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<String?> profileImageId = const Value.absent(),
+                Value<double> profileImageScale = const Value.absent(),
+                Value<double> profileImageOffsetX = const Value.absent(),
+                Value<double> profileImageOffsetY = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MemberTableCompanion.insert(
@@ -3993,6 +4217,9 @@ class $$MemberTableTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 profileImageId: profileImageId,
+                profileImageScale: profileImageScale,
+                profileImageOffsetX: profileImageOffsetX,
+                profileImageOffsetY: profileImageOffsetY,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),

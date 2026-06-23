@@ -39,6 +39,7 @@ enum _SettingsPrivacyAction {
   saveCloudSave,
   restoreCloudSave,
   openRecentlyDeleted,
+  showPrivacyStorageInfo,
   showBetaFeedback,
   enableDarkMode,
   disableDarkMode,

@@ -132,6 +132,9 @@ class LocalDatabaseAppStore implements AppStore {
                 createdAt: member.createdAt,
                 updatedAt: member.updatedAt,
                 profileImageId: Value(member.profileImageId),
+                profileImageScale: Value(member.profileImageScale),
+                profileImageOffsetX: Value(member.profileImageOffsetX),
+                profileImageOffsetY: Value(member.profileImageOffsetY),
                 sortOrder: Value(index),
               ),
             );
@@ -299,6 +302,9 @@ class LocalDatabaseAppStore implements AppStore {
           createdAt: member.createdAt,
           updatedAt: member.updatedAt,
           profileImageId: member.profileImageId,
+          profileImageScale: member.profileImageScale,
+          profileImageOffsetX: member.profileImageOffsetX,
+          profileImageOffsetY: member.profileImageOffsetY,
         );
       }).toList(),
       groups: groups.map((group) {

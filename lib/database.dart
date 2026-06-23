@@ -55,6 +55,14 @@ class MemberTable extends Table {
 
   TextColumn get profileImageId => text().nullable()();
 
+  RealColumn get profileImageScale => real().withDefault(const Constant(1.0))();
+
+  RealColumn get profileImageOffsetX =>
+      real().withDefault(const Constant(0.0))();
+
+  RealColumn get profileImageOffsetY =>
+      real().withDefault(const Constant(0.0))();
+
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 
   @override
@@ -181,7 +189,7 @@ class AllOfMeDatabase extends _$AllOfMeDatabase {
   AllOfMeDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -233,6 +241,17 @@ class AllOfMeDatabase extends _$AllOfMeDatabase {
           await migrator.addColumn(
             timelineEntryTable,
             timelineEntryTable.deletedAt,
+          );
+        }
+        if (from < 4) {
+          await migrator.addColumn(memberTable, memberTable.profileImageScale);
+          await migrator.addColumn(
+            memberTable,
+            memberTable.profileImageOffsetX,
+          );
+          await migrator.addColumn(
+            memberTable,
+            memberTable.profileImageOffsetY,
           );
         }
       },
