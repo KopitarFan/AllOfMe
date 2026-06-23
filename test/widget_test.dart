@@ -187,6 +187,7 @@ void main() {
     expect(find.text('All Of Me'), findsOneWidget);
     expect(find.text('Local-only system'), findsOneWidget);
     expect(find.widgetWithText(TextButton, 'View insights'), findsOneWidget);
+    expect(find.byTooltip('Notes'), findsOneWidget);
     expect(find.text('Current front'), findsOneWidget);
     expect(find.text('Latest update'), findsOneWidget);
     expect(find.byTooltip('Switch to dark mode'), findsOneWidget);
@@ -203,6 +204,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Timeline'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'View all'), findsOneWidget);
   });
 
   testWidgets('shows settings and privacy details', (tester) async {
@@ -489,6 +491,7 @@ void main() {
     await pumpApp(tester);
 
     expect(find.byTooltip('Edit system'), findsWidgets);
+    expect(find.byTooltip('Notes'), findsOneWidget);
     expect(find.byTooltip('Insights'), findsOneWidget);
     expect(find.byTooltip('App lock'), findsOneWidget);
     expect(find.byTooltip('Settings and privacy'), findsOneWidget);
@@ -757,6 +760,86 @@ void main() {
     expect(closedSnapshot?.frontSessions.first.endedAt, isNotNull);
   });
 
+  testWidgets('notes and timeline open as separate views', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Add note'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Note'), 'Pack tea');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pack tea'), findsNothing);
+    expect(find.text('Note saved.'), findsOneWidget);
+    expect(find.widgetWithText(SnackBarAction, 'View notes'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(SnackBarAction, 'View notes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Notes'), findsOneWidget);
+    expect(find.text('Pack tea'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'View all'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Timeline'), findsOneWidget);
+    expect(find.text('Mara - Started fronting'), findsOneWidget);
+    expect(find.text('Pack tea'), findsNothing);
+  });
+
+  testWidgets('home timeline previews five recent timeline entries', (
+    tester,
+  ) async {
+    final seeded = AppSnapshot.seeded(DateTime(2026, 6, 22));
+    final createdAt = DateTime(2026, 6, 22, 12);
+    final timeline = [
+      TimelineEntry(
+        id: 'note-private',
+        type: 'note',
+        action: 'Note',
+        note: 'Private note',
+        createdAt: createdAt.add(const Duration(minutes: 1)),
+      ),
+      for (var index = 0; index < 7; index += 1)
+        TimelineEntry(
+          id: 'entry-$index',
+          type: 'front',
+          action: 'Event $index',
+          memberId: 'member-mara',
+          memberName: 'Mara',
+          createdAt: createdAt.subtract(Duration(minutes: index)),
+        ),
+    ];
+
+    await pumpApp(
+      tester,
+      snapshot: seeded.copyWith(
+        frontingMemberIds: const [],
+        timeline: timeline,
+      ),
+    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
+    await tester.pumpAndSettle();
+
+    for (var index = 0; index < 5; index += 1) {
+      expect(find.text('Mara - Event $index'), findsWidgets);
+    }
+    expect(find.text('Mara - Event 5'), findsNothing);
+    expect(find.text('Private note'), findsNothing);
+    expect(find.widgetWithText(TextButton, 'View 2 more'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'View all'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mara - Event 5'), findsOneWidget);
+    expect(find.text('Mara - Event 6'), findsOneWidget);
+    expect(find.text('Private note'), findsNothing);
+  });
+
   testWidgets('soft deletes and restores timeline entries', (tester) async {
     final store = MemoryAppStore(AppSnapshot.seeded());
     await pumpApp(tester, store: store);
@@ -849,6 +932,44 @@ void main() {
     );
     expect(nameText.maxLines, 2);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('profile image vertical framing moves the avatar crop', (
+    tester,
+  ) async {
+    const imageDataUri =
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+    final seeded = AppSnapshot.seeded();
+    final framedMember = seeded.members.first.copyWith(
+      profileImageDataUri: imageDataUri,
+      profileImageScale: 2,
+      profileImageOffsetX: 0,
+      profileImageOffsetY: 0.5,
+    );
+
+    await pumpApp(
+      tester,
+      snapshot: seeded.copyWith(
+        members: [framedMember],
+        frontingMemberIds: const [],
+      ),
+    );
+
+    final memberCard = find.ancestor(
+      of: find.text('Keeps the day moving.'),
+      matching: find.byType(Card),
+    );
+    final avatarTransforms = tester
+        .widgetList<Transform>(
+          find.descendant(of: memberCard, matching: find.byType(Transform)),
+        )
+        .toList();
+    final translatedAvatar = avatarTransforms.firstWhere(
+      (transform) => transform.transform.storage[13] != 0,
+    );
+
+    expect(translatedAvatar.transform.storage[12], 0);
+    expect(translatedAvatar.transform.storage[13], closeTo(11, 0.001));
   });
 
   testWidgets('adds a group and uses it in the group filter', (tester) async {

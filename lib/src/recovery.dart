@@ -13,10 +13,12 @@ class _RecentlyDeletedDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final archivedMembers = snapshot.archivedMembers;
     final archivedGroups = snapshot.archivedGroups;
-    final deletedTimeline = snapshot.deletedTimeline;
+    final deletedNotes = snapshot.deletedNotes;
+    final deletedTimeline = snapshot.deletedTimelineEntries;
     final hasItems =
         archivedMembers.isNotEmpty ||
         archivedGroups.isNotEmpty ||
+        deletedNotes.isNotEmpty ||
         deletedTimeline.isNotEmpty;
     final maxContentHeight = MediaQuery.sizeOf(context).height * 0.72;
 
@@ -127,6 +129,48 @@ class _RecentlyDeletedDialog extends StatelessWidget {
                               )
                               .toList(),
                         ),
+                      if (deletedNotes.isNotEmpty)
+                        _DeletedItemsSection(
+                          title: 'Notes',
+                          children: deletedNotes
+                              .map(
+                                (entry) => ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(
+                                    Icons.sticky_note_2_outlined,
+                                  ),
+                                  title: Text(
+                                    _entryTitle(entry),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    'Deleted ${_formatDateTime(entry.deletedAt!)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    onPressed: () => _restore(
+                                      context,
+                                      _DeletedItemReference(
+                                        _DeletedItemKind.timelineEntry,
+                                        entry.id,
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.restore_outlined),
+                                    tooltip: 'Restore note',
+                                  ),
+                                  onTap: () => _restore(
+                                    context,
+                                    _DeletedItemReference(
+                                      _DeletedItemKind.timelineEntry,
+                                      entry.id,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
                       if (deletedTimeline.isNotEmpty)
                         _DeletedItemsSection(
                           title: 'Timeline',
@@ -134,11 +178,7 @@ class _RecentlyDeletedDialog extends StatelessWidget {
                               .map(
                                 (entry) => ListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  leading: Icon(
-                                    entry.type == 'note'
-                                        ? Icons.sticky_note_2_outlined
-                                        : Icons.bolt_outlined,
-                                  ),
+                                  leading: const Icon(Icons.bolt_outlined),
                                   title: Text(
                                     _entryTitle(entry),
                                     maxLines: 1,

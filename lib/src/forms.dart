@@ -802,7 +802,7 @@ class _TimelineNoteDialogState extends State<_TimelineNoteDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Timeline note'),
+      title: const Text('Note'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
         child: TextField(

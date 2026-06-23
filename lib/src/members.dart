@@ -627,74 +627,222 @@ class _MemberTile extends StatelessWidget {
   }
 }
 
-class _TimelineSection extends StatelessWidget {
-  const _TimelineSection({
+class _RecentTimelineSection extends StatelessWidget {
+  const _RecentTimelineSection({
     required this.events,
-    required this.onAddNote,
+    required this.onViewAll,
     required this.onDeleteEntry,
   });
 
   final List<TimelineEntry> events;
-  final VoidCallback onAddNote;
+  final VoidCallback onViewAll;
   final ValueChanged<TimelineEntry> onDeleteEntry;
 
   @override
   Widget build(BuildContext context) {
+    final recentEvents = events.take(5).toList(growable: false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(
           icon: Icons.history,
           title: 'Timeline',
-          trailing: IconButton(
-            onPressed: onAddNote,
-            icon: const Icon(Icons.note_add_outlined),
-            tooltip: 'Add note',
+          trailing: TextButton.icon(
+            onPressed: onViewAll,
+            icon: const Icon(Icons.open_in_full, size: 18),
+            label: const Text('View all'),
           ),
         ),
         const SizedBox(height: 10),
-        if (events.isEmpty)
-          _EmptySurface(
-            icon: Icons.history_toggle_off_outlined,
-            label: 'No timeline entries yet',
-            message: 'Front changes and notes will show here.',
-            action: TextButton.icon(
-              onPressed: onAddNote,
-              icon: const Icon(Icons.note_add_outlined),
-              label: const Text('Add note'),
-            ),
-          )
-        else
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListView.separated(
-              itemCount: events.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final event = events[index];
-                return ListTile(
-                  leading: Icon(
-                    event.type == 'note'
-                        ? Icons.sticky_note_2_outlined
-                        : Icons.bolt_outlined,
-                  ),
-                  title: Text(_entryTitle(event)),
-                  subtitle: Text(_entrySubtitle(event)),
-                  trailing: IconButton(
-                    onPressed: () => onDeleteEntry(event),
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete timeline entry',
-                  ),
-                );
-              },
+        _TimelineEntryList(
+          entries: recentEvents,
+          emptyIcon: Icons.history_toggle_off_outlined,
+          emptyLabel: 'No timeline entries yet',
+          emptyMessage: 'Front changes will show here.',
+          deleteTooltip: 'Delete timeline entry',
+          onDeleteEntry: onDeleteEntry,
+        ),
+        if (events.length > recentEvents.length) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onViewAll,
+              child: Text('View ${events.length - recentEvents.length} more'),
             ),
           ),
+        ],
       ],
+    );
+  }
+}
+
+class _NotesScreen extends StatefulWidget {
+  const _NotesScreen({
+    required this.entries,
+    required this.onAddNote,
+    required this.onDeleteNote,
+  });
+
+  final List<TimelineEntry> Function() entries;
+  final Future<void> Function() onAddNote;
+  final Future<void> Function(TimelineEntry entry) onDeleteNote;
+
+  @override
+  State<_NotesScreen> createState() => _NotesScreenState();
+}
+
+class _NotesScreenState extends State<_NotesScreen> {
+  Future<void> _addNote() async {
+    await widget.onAddNote();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _deleteNote(TimelineEntry entry) async {
+    await widget.onDeleteNote(entry);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = widget.entries();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Notes')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
+          children: [
+            _TimelineEntryList(
+              entries: entries,
+              emptyIcon: Icons.sticky_note_2_outlined,
+              emptyLabel: 'No notes yet',
+              emptyMessage: 'Add a note when you want to remember something.',
+              emptyAction: TextButton.icon(
+                onPressed: _addNote,
+                icon: const Icon(Icons.note_add_outlined),
+                label: const Text('Add note'),
+              ),
+              deleteTooltip: 'Delete note',
+              onDeleteEntry: _deleteNote,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addNote,
+        icon: const Icon(Icons.note_add_outlined),
+        label: const Text('Add note'),
+      ),
+    );
+  }
+}
+
+class _TimelineEntriesScreen extends StatefulWidget {
+  const _TimelineEntriesScreen({
+    required this.entries,
+    required this.onDeleteEntry,
+  });
+
+  final List<TimelineEntry> Function() entries;
+  final Future<void> Function(TimelineEntry entry) onDeleteEntry;
+
+  @override
+  State<_TimelineEntriesScreen> createState() => _TimelineEntriesScreenState();
+}
+
+class _TimelineEntriesScreenState extends State<_TimelineEntriesScreen> {
+  Future<void> _deleteEntry(TimelineEntry entry) async {
+    await widget.onDeleteEntry(entry);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = widget.entries();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Timeline')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
+          children: [
+            _TimelineEntryList(
+              entries: entries,
+              emptyIcon: Icons.history_toggle_off_outlined,
+              emptyLabel: 'No timeline entries yet',
+              emptyMessage: 'Front changes will show here.',
+              deleteTooltip: 'Delete timeline entry',
+              onDeleteEntry: _deleteEntry,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineEntryList extends StatelessWidget {
+  const _TimelineEntryList({
+    required this.entries,
+    required this.emptyIcon,
+    required this.emptyLabel,
+    required this.emptyMessage,
+    required this.deleteTooltip,
+    required this.onDeleteEntry,
+    this.emptyAction,
+  });
+
+  final List<TimelineEntry> entries;
+  final IconData emptyIcon;
+  final String emptyLabel;
+  final String emptyMessage;
+  final String deleteTooltip;
+  final ValueChanged<TimelineEntry> onDeleteEntry;
+  final Widget? emptyAction;
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return _EmptySurface(
+        icon: emptyIcon,
+        label: emptyLabel,
+        message: emptyMessage,
+        action: emptyAction,
+      );
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ListView.separated(
+        itemCount: entries.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final event = entries[index];
+          return ListTile(
+            leading: Icon(
+              event.isNote ? Icons.sticky_note_2_outlined : Icons.bolt_outlined,
+            ),
+            title: Text(_entryTitle(event)),
+            subtitle: Text(_entrySubtitle(event)),
+            trailing: IconButton(
+              onPressed: () => onDeleteEntry(event),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: deleteTooltip,
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -757,17 +905,28 @@ class _AvatarPreview extends StatelessWidget {
       );
     }
 
+    final scale = _clampDouble(imageScale, 1, 3);
+    final offsetX = _clampDouble(imageOffsetX, -1, 1);
+    final offsetY = _clampDouble(imageOffsetY, -1, 1);
+    final scaledSize = size * scale;
+    final panExtent = (scaledSize - size) / 2;
+
     return ClipOval(
       child: SizedBox.square(
         dimension: size,
-        child: Transform.scale(
-          scale: _clampDouble(imageScale, 1, 3),
-          child: Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-            alignment: Alignment(
-              _clampDouble(imageOffsetX, -1, 1),
-              _clampDouble(imageOffsetY, -1, 1),
+        child: Transform.translate(
+          offset: Offset(offsetX * panExtent, offsetY * panExtent),
+          child: OverflowBox(
+            minWidth: scaledSize,
+            maxWidth: scaledSize,
+            minHeight: scaledSize,
+            maxHeight: scaledSize,
+            child: Image.memory(
+              bytes,
+              width: scaledSize,
+              height: scaledSize,
+              fit: BoxFit.cover,
+              alignment: Alignment(offsetX, offsetY),
             ),
           ),
         ),
