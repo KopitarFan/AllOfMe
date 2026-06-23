@@ -529,67 +529,98 @@ class _MemberTile extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _MemberAvatar(member: member, size: 44),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 430;
+            final details = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  member.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  note,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (groups.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: groups
+                        .map(
+                          (group) => _GroupChip(
+                            group: group,
+                            compact: true,
+                            onPressed: () => onSelectGroup(group),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+            );
+            final actions = Wrap(
+              spacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (!member.archived)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 112),
+                    child: FilledButton.tonalIcon(
+                      onPressed: onToggleFront,
+                      icon: Icon(
+                        isFronting ? Icons.check_circle : Icons.login,
+                        color: isFronting ? colorScheme.primary : null,
+                      ),
+                      label: Text(isFronting ? 'Fronting' : 'Front'),
+                    ),
+                  ),
+                IconButton(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit member',
+                ),
+              ],
+            );
+
+            if (compact) {
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    member.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _MemberAvatar(member: member, size: 44),
+                      const SizedBox(width: 14),
+                      Expanded(child: details),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    note,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  if (groups.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: groups
-                          .map(
-                            (group) => _GroupChip(
-                              group: group,
-                              compact: true,
-                              onPressed: () => onSelectGroup(group),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
+                  const SizedBox(height: 10),
+                  Align(alignment: Alignment.centerRight, child: actions),
                 ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (!member.archived)
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 112),
-                child: FilledButton.tonalIcon(
-                  onPressed: onToggleFront,
-                  icon: Icon(
-                    isFronting ? Icons.check_circle : Icons.login,
-                    color: isFronting ? colorScheme.primary : null,
-                  ),
-                  label: Text(isFronting ? 'Fronting' : 'Front'),
-                ),
-              ),
-            IconButton(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit member',
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _MemberAvatar(member: member, size: 44),
+                const SizedBox(width: 14),
+                Expanded(child: details),
+                const SizedBox(width: 10),
+                actions,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -681,6 +712,9 @@ class _MemberAvatar extends StatelessWidget {
       colorValue: member.colorValue,
       initial: member.initial,
       size: size,
+      imageScale: member.profileImageScale,
+      imageOffsetX: member.profileImageOffsetX,
+      imageOffsetY: member.profileImageOffsetY,
     );
   }
 }
@@ -691,31 +725,53 @@ class _AvatarPreview extends StatelessWidget {
     required this.colorValue,
     required this.initial,
     required this.size,
+    this.imageScale = defaultProfileImageScale,
+    this.imageOffsetX = defaultProfileImageOffset,
+    this.imageOffsetY = defaultProfileImageOffset,
   });
 
   final String? imageDataUri;
   final int colorValue;
   final String initial;
   final double size;
+  final double imageScale;
+  final double imageOffsetX;
+  final double imageOffsetY;
 
   @override
   Widget build(BuildContext context) {
     final bytes = _imageBytesFromDataUri(imageDataUri);
 
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: Color(colorValue),
-      backgroundImage: bytes == null ? null : MemoryImage(bytes),
-      child: bytes == null
-          ? Text(
-              initial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.4,
-                fontWeight: FontWeight.w700,
-              ),
-            )
-          : null,
+    if (bytes == null) {
+      return CircleAvatar(
+        radius: size / 2,
+        backgroundColor: Color(colorValue),
+        child: Text(
+          initial,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * 0.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    return ClipOval(
+      child: SizedBox.square(
+        dimension: size,
+        child: Transform.scale(
+          scale: _clampDouble(imageScale, 1, 3),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            alignment: Alignment(
+              _clampDouble(imageOffsetX, -1, 1),
+              _clampDouble(imageOffsetY, -1, 1),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

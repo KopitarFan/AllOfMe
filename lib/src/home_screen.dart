@@ -9,7 +9,9 @@ class HomeScreen extends StatefulWidget {
     required this.cloudSavePayloadDecoder,
     required this.authenticator,
     required this.themeMode,
+    required this.themePalette,
     required this.onThemeModeChanged,
+    required this.onThemePaletteChanged,
     required this.onToggleThemeMode,
   });
 
@@ -19,7 +21,9 @@ class HomeScreen extends StatefulWidget {
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
   final ThemeMode themeMode;
+  final AppThemePalette themePalette;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ValueChanged<AppThemePalette> onThemePaletteChanged;
   final VoidCallback onToggleThemeMode;
 
   @override
@@ -772,7 +776,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _storeInfo = info;
       });
 
-      final action = await showDialog<_SettingsPrivacyAction>(
+      final action = await showDialog<Object>(
         context: context,
         builder: (context) => _SettingsPrivacyDialog(
           snapshot: snapshot,
@@ -780,8 +784,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           cloudSaveMetadata: cloudSaveMetadata,
           lockStatus: lockStatus,
           themeMode: widget.themeMode,
+          themePalette: widget.themePalette,
         ),
       );
+
+      if (action is AppThemePalette) {
+        widget.onThemePaletteChanged(action);
+        return;
+      }
+      if (action == null || action is! _SettingsPrivacyAction) {
+        return;
+      }
 
       switch (action) {
         case _SettingsPrivacyAction.createBackup:
@@ -801,6 +814,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return;
         case _SettingsPrivacyAction.openRecentlyDeleted:
           await _showRecentlyDeleted();
+          return;
+        case _SettingsPrivacyAction.showPrivacyStorageInfo:
+          await _showPrivacyStorageInfo(
+            snapshot: snapshot,
+            storeInfo: info,
+            cloudSaveMetadata: cloudSaveMetadata,
+          );
           return;
         case _SettingsPrivacyAction.showBetaFeedback:
           await _showBetaFeedback();
@@ -822,10 +842,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         case _SettingsPrivacyAction.clearAllData:
           await _clearLocalData();
           return;
-        case null:
-          return;
       }
     }
+  }
+
+  Future<void> _showPrivacyStorageInfo({
+    required AppSnapshot snapshot,
+    required AppStoreInfo storeInfo,
+    required CloudSaveMetadata? cloudSaveMetadata,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (context) => _PrivacyStorageInfoScreen(
+          snapshot: snapshot,
+          storeInfo: storeInfo,
+          cloudSaveMetadata: cloudSaveMetadata,
+        ),
+      ),
+    );
   }
 
   Future<void> _showBetaFeedback() async {

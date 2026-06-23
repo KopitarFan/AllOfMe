@@ -93,6 +93,9 @@ class _MemberDialogState extends State<_MemberDialog> {
   late int _colorValue;
   String? _profileImageId;
   String? _profileImageDataUri;
+  double _profileImageScale = defaultProfileImageScale;
+  double _profileImageOffsetX = defaultProfileImageOffset;
+  double _profileImageOffsetY = defaultProfileImageOffset;
   late Set<String> _groupIds;
   bool _pickingImage = false;
 
@@ -108,6 +111,11 @@ class _MemberDialogState extends State<_MemberDialog> {
     _colorValue = member?.colorValue ?? memberColorChoices.first;
     _profileImageId = member?.profileImageId;
     _profileImageDataUri = member?.profileImageDataUri;
+    _profileImageScale = member?.profileImageScale ?? defaultProfileImageScale;
+    _profileImageOffsetX =
+        member?.profileImageOffsetX ?? defaultProfileImageOffset;
+    _profileImageOffsetY =
+        member?.profileImageOffsetY ?? defaultProfileImageOffset;
     _groupIds = {...?member?.groupIds};
   }
 
@@ -143,6 +151,9 @@ class _MemberDialogState extends State<_MemberDialog> {
           updatedAt: now,
           profileImageId: _profileImageDataUri == null ? null : _profileImageId,
           profileImageDataUri: _profileImageDataUri,
+          profileImageScale: _profileImageScale,
+          profileImageOffsetX: _profileImageOffsetX,
+          profileImageOffsetY: _profileImageOffsetY,
         ),
       ),
     );
@@ -175,7 +186,11 @@ class _MemberDialogState extends State<_MemberDialog> {
         _profileImageId = null;
         _profileImageDataUri =
             'data:${mimeType ?? 'image/jpeg'};base64,${base64Encode(bytes)}';
+        _profileImageScale = defaultProfileImageScale;
+        _profileImageOffsetX = defaultProfileImageOffset;
+        _profileImageOffsetY = defaultProfileImageOffset;
       });
+      await _adjustProfileImage();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -195,6 +210,39 @@ class _MemberDialogState extends State<_MemberDialog> {
     setState(() {
       _profileImageId = null;
       _profileImageDataUri = null;
+      _profileImageScale = defaultProfileImageScale;
+      _profileImageOffsetX = defaultProfileImageOffset;
+      _profileImageOffsetY = defaultProfileImageOffset;
+    });
+  }
+
+  Future<void> _adjustProfileImage() async {
+    final dataUri = _profileImageDataUri;
+    if (dataUri == null || dataUri.isEmpty) {
+      return;
+    }
+
+    final frame = await showDialog<_ProfileImageFrame>(
+      context: context,
+      builder: (context) => _ProfileImageFrameDialog(
+        imageDataUri: dataUri,
+        colorValue: _colorValue,
+        initial: _initialFromName(_nameController.text),
+        initialFrame: _ProfileImageFrame(
+          scale: _profileImageScale,
+          offsetX: _profileImageOffsetX,
+          offsetY: _profileImageOffsetY,
+        ),
+      ),
+    );
+    if (frame == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _profileImageScale = frame.scale;
+      _profileImageOffsetX = frame.offsetX;
+      _profileImageOffsetY = frame.offsetY;
     });
   }
 
@@ -230,6 +278,9 @@ class _MemberDialogState extends State<_MemberDialog> {
                           colorValue: _colorValue,
                           initial: _initialFromName(value.text),
                           size: 88,
+                          imageScale: _profileImageScale,
+                          imageOffsetX: _profileImageOffsetX,
+                          imageOffsetY: _profileImageOffsetY,
                         );
                       },
                     ),
@@ -248,6 +299,12 @@ class _MemberDialogState extends State<_MemberDialog> {
                           ),
                           label: Text(_pickingImage ? 'Loading' : 'Image'),
                         ),
+                        if (_profileImageDataUri != null)
+                          TextButton.icon(
+                            onPressed: _adjustProfileImage,
+                            icon: const Icon(Icons.crop_free),
+                            label: const Text('Adjust'),
+                          ),
                         if (_profileImageDataUri != null)
                           TextButton.icon(
                             onPressed: _clearProfileImage,
@@ -361,6 +418,209 @@ class _MemberDialogState extends State<_MemberDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+class _ProfileImageFrame {
+  const _ProfileImageFrame({
+    required this.scale,
+    required this.offsetX,
+    required this.offsetY,
+  });
+
+  final double scale;
+  final double offsetX;
+  final double offsetY;
+
+  _ProfileImageFrame normalized() {
+    return _ProfileImageFrame(
+      scale: _clampDouble(scale, 1, 3),
+      offsetX: _clampDouble(offsetX, -1, 1),
+      offsetY: _clampDouble(offsetY, -1, 1),
+    );
+  }
+}
+
+class _ProfileImageFrameDialog extends StatefulWidget {
+  const _ProfileImageFrameDialog({
+    required this.imageDataUri,
+    required this.colorValue,
+    required this.initial,
+    required this.initialFrame,
+  });
+
+  final String imageDataUri;
+  final int colorValue;
+  final String initial;
+  final _ProfileImageFrame initialFrame;
+
+  @override
+  State<_ProfileImageFrameDialog> createState() =>
+      _ProfileImageFrameDialogState();
+}
+
+class _ProfileImageFrameDialogState extends State<_ProfileImageFrameDialog> {
+  late double _scale;
+  late double _offsetX;
+  late double _offsetY;
+
+  @override
+  void initState() {
+    super.initState();
+    final frame = widget.initialFrame.normalized();
+    _scale = frame.scale;
+    _offsetX = frame.offsetX;
+    _offsetY = frame.offsetY;
+  }
+
+  void _reset() {
+    setState(() {
+      _scale = defaultProfileImageScale;
+      _offsetX = defaultProfileImageOffset;
+      _offsetY = defaultProfileImageOffset;
+    });
+  }
+
+  void _save() {
+    Navigator.of(context).pop(
+      _ProfileImageFrame(
+        scale: _scale,
+        offsetX: _offsetX,
+        offsetY: _offsetY,
+      ).normalized(),
+    );
+  }
+
+  void _panImage(DragUpdateDetails details) {
+    setState(() {
+      _offsetX = _clampDouble(_offsetX - details.delta.dx / 90, -1, 1);
+      _offsetY = _clampDouble(_offsetY - details.delta.dy / 90, -1, 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      title: const Text('Adjust image'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onPanUpdate: _panImage,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _AvatarPreview(
+                    imageDataUri: widget.imageDataUri,
+                    colorValue: widget.colorValue,
+                    initial: widget.initial,
+                    size: 184,
+                    imageScale: _scale,
+                    imageOffsetX: _offsetX,
+                    imageOffsetY: _offsetY,
+                  ),
+                  IgnorePointer(
+                    child: Container(
+                      width: 184,
+                      height: 184,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.primary,
+                          width: 3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            _ProfileImageFrameSlider(
+              label: 'Zoom',
+              value: _scale,
+              min: 1,
+              max: 3,
+              divisions: 20,
+              onChanged: (value) => setState(() {
+                _scale = value;
+              }),
+            ),
+            _ProfileImageFrameSlider(
+              label: 'Horizontal',
+              value: _offsetX,
+              min: -1,
+              max: 1,
+              divisions: 20,
+              onChanged: (value) => setState(() {
+                _offsetX = value;
+              }),
+            ),
+            _ProfileImageFrameSlider(
+              label: 'Vertical',
+              value: _offsetY,
+              min: -1,
+              max: 1,
+              divisions: 20,
+              onChanged: (value) => setState(() {
+                _offsetY = value;
+              }),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _reset, child: const Text('Reset')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Done')),
+      ],
+    );
+  }
+}
+
+class _ProfileImageFrameSlider extends StatelessWidget {
+  const _ProfileImageFrameSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 82,
+          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
+        ),
       ],
     );
   }

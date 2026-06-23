@@ -24,12 +24,18 @@ void main() {
     final snapshot = AppSnapshot.seeded();
     final member = snapshot.members.first.copyWith(
       profileImageDataUri: imageDataUri,
+      profileImageScale: 1.8,
+      profileImageOffsetX: -0.4,
+      profileImageOffsetY: 0.25,
     );
     final restored = AppSnapshot.fromJson(
       snapshot.copyWith(members: [member]).toJson(),
     );
 
     expect(restored.members.single.profileImageDataUri, imageDataUri);
+    expect(restored.members.single.profileImageScale, 1.8);
+    expect(restored.members.single.profileImageOffsetX, -0.4);
+    expect(restored.members.single.profileImageOffsetY, 0.25);
   });
 
   test('member groups round trip through snapshots', () {
@@ -208,11 +214,42 @@ void main() {
     expect(find.text('Settings & privacy'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'Dark mode'), findsOneWidget);
-    expect(find.text('Privacy'), findsOneWidget);
-    expect(find.text('Privacy policy'), findsOneWidget);
-    expect(find.text('Storage'), findsWidgets);
-    expect(find.text('In-memory'), findsWidgets);
-    expect(find.text('Schema'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('Sage'), findsOneWidget);
+    expect(find.text('Graphite'), findsOneWidget);
+    expect(find.text('Black'), findsOneWidget);
+    expect(find.text('Bright blue'), findsOneWidget);
+    expect(find.text('Bright green'), findsOneWidget);
+    expect(find.text('Bright lime'), findsOneWidget);
+    expect(find.text('Bright pink'), findsOneWidget);
+    expect(find.text('Hot pink'), findsOneWidget);
+    expect(find.text('Bright orange'), findsOneWidget);
+    expect(find.text('Bright purple'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('theme-palette-preview-black')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('theme-palette-preview-hot_pink')),
+      findsOneWidget,
+    );
+    final hotPinkGradient = tester.widget<Container>(
+      find.byKey(const ValueKey('theme-palette-gradient-hot_pink')),
+    );
+    final hotPinkDecoration = hotPinkGradient.decoration as BoxDecoration;
+    final hotPinkLinearGradient = hotPinkDecoration.gradient as LinearGradient;
+    expect(
+      hotPinkLinearGradient.colors,
+      contains(AppThemePalette.hotPink.seedColor),
+    );
+    final blackGradient = tester.widget<Container>(
+      find.byKey(const ValueKey('theme-palette-gradient-black')),
+    );
+    final blackDecoration = blackGradient.decoration as BoxDecoration;
+    final blackLinearGradient = blackDecoration.gradient as LinearGradient;
+    expect(blackLinearGradient.colors.last, AppThemePalette.black.darkScaffold);
+    expect(find.text('Information'), findsOneWidget);
+    expect(find.text('Privacy & storage'), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'App lock'), findsOneWidget);
     expect(find.text('Face ID available'), findsOneWidget);
     expect(find.text('Beta feedback'), findsOneWidget);
@@ -220,11 +257,32 @@ void main() {
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
     expect(find.text('Cloud save preview'), findsOneWidget);
-    expect(find.text('No cloud save yet'), findsOneWidget);
+    expect(find.text('Save this device before restoring.'), findsOneWidget);
     expect(find.text('Save now'), findsOneWidget);
     expect(find.text('Restore cloud save'), findsOneWidget);
     expect(find.text('Recently deleted'), findsOneWidget);
     expect(find.text('Clear all local data'), findsOneWidget);
+  });
+
+  testWidgets('opens privacy and storage information on its own screen', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Privacy & storage');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Privacy policy'), findsOneWidget);
+    expect(find.text('On this device'), findsOneWidget);
+    expect(find.text('Storage'), findsWidgets);
+    expect(find.text('In-memory'), findsOneWidget);
+    expect(find.text('Records'), findsOneWidget);
+    expect(find.text('Schema'), findsWidgets);
+    expect(find.text('Cloud save preview'), findsOneWidget);
+    expect(find.text('Preview only'), findsOneWidget);
+    expect(find.text('No cloud save yet'), findsOneWidget);
   });
 
   testWidgets('shows beta feedback support details', (tester) async {
@@ -263,6 +321,23 @@ void main() {
       find.widgetWithText(SwitchListTile, 'Dark mode'),
     );
     expect(darkModeSwitch.value, isTrue);
+  });
+
+  testWidgets('selects a theme palette from settings', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    final hotPinkPalette = find.byKey(const ValueKey('theme-palette-hot_pink'));
+    await tester.ensureVisible(hotPinkPalette);
+    await tester.pumpAndSettle();
+    await tester.tap(hotPinkPalette);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Hot pink selected'), findsOneWidget);
   });
 
   testWidgets('first-run setup starts fresh from an empty store', (
@@ -625,7 +700,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Settings and privacy'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Saved '), findsWidgets);
+    expect(find.textContaining('Latest save:'), findsOneWidget);
     await tapSettingsTile(tester, 'Restore cloud save');
     await tester.pumpAndSettle();
 
@@ -748,6 +823,32 @@ void main() {
     expect(find.text('June'), findsOneWidget);
     expect(find.text('Likes lists.'), findsOneWidget);
     expect(find.text('Rest'), findsWidgets);
+  });
+
+  testWidgets('long member names wrap on phone screens', (tester) async {
+    final seeded = AppSnapshot.seeded();
+    final longNameMember = seeded.members.first.copyWith(
+      name: 'An Extremely Long Member Name',
+    );
+
+    await pumpApp(
+      tester,
+      size: const Size(390, 760),
+      snapshot: seeded.copyWith(members: [longNameMember]),
+    );
+
+    final memberCard = find.ancestor(
+      of: find.text('Keeps the day moving.'),
+      matching: find.byType(Card),
+    );
+    final nameText = tester.widget<Text>(
+      find.descendant(
+        of: memberCard,
+        matching: find.text('An Extremely Long Member Name'),
+      ),
+    );
+    expect(nameText.maxLines, 2);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('adds a group and uses it in the group filter', (tester) async {

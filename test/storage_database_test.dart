@@ -181,6 +181,9 @@ void main() {
       final snapshot = AppSnapshot.seeded();
       final member = snapshot.members.first.copyWith(
         profileImageDataUri: imageDataUri,
+        profileImageScale: 2.4,
+        profileImageOffsetX: -0.5,
+        profileImageOffsetY: 0.45,
       );
 
       final saved = await store().save(snapshot.copyWith(members: [member]));
@@ -191,13 +194,25 @@ void main() {
 
       expect(saved.members.single.profileImageId, isNotNull);
       expect(saved.members.single.profileImageDataUri, imageDataUri);
+      expect(saved.members.single.profileImageScale, 2.4);
+      expect(saved.members.single.profileImageOffsetX, -0.5);
+      expect(saved.members.single.profileImageOffsetY, 0.45);
       expect(File(imagePath).existsSync(), isTrue);
       expect(reloaded?.members.single.profileImageDataUri, imageDataUri);
+      expect(reloaded?.members.single.profileImageScale, 2.4);
+      expect(reloaded?.members.single.profileImageOffsetX, -0.5);
+      expect(reloaded?.members.single.profileImageOffsetY, 0.45);
       expect(
         snapshotFromBackupJson(
           backup.contents,
         ).members.single.profileImageDataUri,
         imageDataUri,
+      );
+      expect(
+        snapshotFromBackupJson(
+          backup.contents,
+        ).members.single.profileImageScale,
+        2.4,
       );
 
       final backupJson = jsonDecode(backup.contents) as Map<String, Object?>;

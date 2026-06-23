@@ -95,6 +95,16 @@ String _initialFromName(String value) {
   return trimmed.isEmpty ? '?' : trimmed.characters.first;
 }
 
+double _clampDouble(double value, double min, double max) {
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
+}
+
 Uint8List? _imageBytesFromDataUri(String? dataUri) {
   if (dataUri == null || dataUri.isEmpty) {
     return null;

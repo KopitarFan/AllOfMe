@@ -30,6 +30,7 @@ const String _allGroupsFilterId = '__all';
 const String _ungroupedInsightGroupId = '__ungrouped';
 const String _sampleInsightsSessionPrefix = 'sample-insights-session-';
 const String _themeModePreferenceKey = 'all_of_me.theme_mode';
+const String _themePalettePreferenceKey = 'all_of_me.theme_palette';
 const String _supportUrl = 'https://kopitarfan.github.io/AllOfMe/support.html';
 const String _issuesUrl = 'https://github.com/KopitarFan/AllOfMe/issues';
 

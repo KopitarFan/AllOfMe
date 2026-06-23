@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-const int appSchemaVersion = 3;
+const int appSchemaVersion = 4;
+const double defaultProfileImageScale = 1.0;
+const double defaultProfileImageOffset = 0.0;
 const String appDisplayName = 'All Of Me';
 const String legacyAppDisplayName = 'AllOfMe';
 
@@ -82,6 +84,9 @@ class Member {
     required this.updatedAt,
     this.profileImageId,
     this.profileImageDataUri,
+    this.profileImageScale = defaultProfileImageScale,
+    this.profileImageOffsetX = defaultProfileImageOffset,
+    this.profileImageOffsetY = defaultProfileImageOffset,
   });
 
   final String id;
@@ -95,6 +100,9 @@ class Member {
   final DateTime updatedAt;
   final String? profileImageId;
   final String? profileImageDataUri;
+  final double profileImageScale;
+  final double profileImageOffsetX;
+  final double profileImageOffsetY;
 
   String get initial => name.trim().isEmpty ? '?' : name.trim()[0];
 
@@ -108,6 +116,9 @@ class Member {
     DateTime? updatedAt,
     Object? profileImageId = _copySentinel,
     Object? profileImageDataUri = _copySentinel,
+    double? profileImageScale,
+    double? profileImageOffsetX,
+    double? profileImageOffsetY,
   }) {
     return Member(
       id: id,
@@ -125,6 +136,9 @@ class Member {
       profileImageDataUri: profileImageDataUri == _copySentinel
           ? this.profileImageDataUri
           : profileImageDataUri as String?,
+      profileImageScale: profileImageScale ?? this.profileImageScale,
+      profileImageOffsetX: profileImageOffsetX ?? this.profileImageOffsetX,
+      profileImageOffsetY: profileImageOffsetY ?? this.profileImageOffsetY,
     );
   }
 
@@ -141,6 +155,9 @@ class Member {
       'updatedAt': updatedAt.toIso8601String(),
       'profileImageId': profileImageId,
       'profileImageDataUri': profileImageDataUri,
+      'profileImageScale': profileImageScale,
+      'profileImageOffsetX': profileImageOffsetX,
+      'profileImageOffsetY': profileImageOffsetY,
     };
   }
 
@@ -160,6 +177,18 @@ class Member {
       updatedAt: _dateValue(json['updatedAt'], now),
       profileImageId: _nullableString(json['profileImageId']),
       profileImageDataUri: _nullableString(json['profileImageDataUri']),
+      profileImageScale: _doubleValue(
+        json['profileImageScale'],
+        defaultProfileImageScale,
+      ),
+      profileImageOffsetX: _doubleValue(
+        json['profileImageOffsetX'],
+        defaultProfileImageOffset,
+      ),
+      profileImageOffsetY: _doubleValue(
+        json['profileImageOffsetY'],
+        defaultProfileImageOffset,
+      ),
     );
   }
 }
@@ -741,6 +770,16 @@ String? _nullableString(Object? value) {
 int _intValue(Object? value, int fallback) {
   if (value is int) {
     return value;
+  }
+  return fallback;
+}
+
+double _doubleValue(Object? value, double fallback) {
+  if (value is double) {
+    return value;
+  }
+  if (value is int) {
+    return value.toDouble();
   }
   return fallback;
 }

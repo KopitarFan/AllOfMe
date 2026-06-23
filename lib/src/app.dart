@@ -9,6 +9,7 @@ class AllOfMeApp extends StatefulWidget {
     this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
     this.initialThemeMode = ThemeMode.light,
+    this.initialThemePalette = AppThemePalette.sage,
   });
 
   final AppStore store;
@@ -17,6 +18,7 @@ class AllOfMeApp extends StatefulWidget {
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
   final ThemeMode initialThemeMode;
+  final AppThemePalette initialThemePalette;
 
   @override
   State<AllOfMeApp> createState() => _AllOfMeAppState();
@@ -24,24 +26,30 @@ class AllOfMeApp extends StatefulWidget {
 
 class _AllOfMeAppState extends State<AllOfMeApp> {
   late ThemeMode _themeMode;
+  late AppThemePalette _themePalette;
 
   @override
   void initState() {
     super.initState();
     _themeMode = widget.initialThemeMode;
-    _loadThemeMode();
+    _themePalette = widget.initialThemePalette;
+    _loadThemePreferences();
   }
 
-  Future<void> _loadThemeMode() async {
+  Future<void> _loadThemePreferences() async {
     final preferences = await SharedPreferences.getInstance();
     final storedThemeMode = _themeModeFromPreference(
       preferences.getString(_themeModePreferenceKey),
     );
-    if (storedThemeMode == null || !mounted) {
+    final storedThemePalette = _themePaletteFromPreference(
+      preferences.getString(_themePalettePreferenceKey),
+    );
+    if (!mounted) {
       return;
     }
     setState(() {
-      _themeMode = storedThemeMode;
+      _themeMode = storedThemeMode ?? _themeMode;
+      _themePalette = storedThemePalette ?? _themePalette;
     });
   }
 
@@ -65,13 +73,24 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
     );
   }
 
+  Future<void> _setThemePalette(AppThemePalette palette) async {
+    if (_themePalette != palette) {
+      setState(() {
+        _themePalette = palette;
+      });
+    }
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_themePalettePreferenceKey, palette.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: appDisplayName,
       debugShowCheckedModeBanner: false,
-      theme: _buildAppTheme(Brightness.light),
-      darkTheme: _buildAppTheme(Brightness.dark),
+      theme: _buildAppTheme(_themePalette, Brightness.light),
+      darkTheme: _buildAppTheme(_themePalette, Brightness.dark),
       themeMode: _themeMode,
       home: HomeScreen(
         store: widget.store,
@@ -80,31 +99,131 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
         cloudSavePayloadDecoder: widget.cloudSavePayloadDecoder,
         authenticator: widget.authenticator,
         themeMode: _themeMode,
+        themePalette: _themePalette,
         onThemeModeChanged: _setThemeMode,
+        onThemePaletteChanged: _setThemePalette,
         onToggleThemeMode: _toggleThemeMode,
       ),
     );
   }
 }
 
-ThemeData _buildAppTheme(Brightness brightness) {
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF24786D),
-    brightness: brightness,
+enum AppThemePalette {
+  sage(
+    id: 'sage',
+    label: 'Sage',
+    seedColor: Color(0xFF24786D),
+    lightScaffold: Color(0xFFF7F8F5),
+    darkScaffold: Color(0xFF101816),
+  ),
+  graphite(
+    id: 'graphite',
+    label: 'Graphite',
+    seedColor: Color(0xFF6B7280),
+    lightScaffold: Color(0xFFF5F6F8),
+    darkScaffold: Color(0xFF090A0C),
+  ),
+  black(
+    id: 'black',
+    label: 'Black',
+    seedColor: Color(0xFF9CA3AF),
+    lightScaffold: Color(0xFFF6F6F6),
+    darkScaffold: Color(0xFF000000),
+  ),
+  ocean(
+    id: 'ocean',
+    label: 'Ocean',
+    seedColor: Color(0xFF1D70B8),
+    lightScaffold: Color(0xFFF3F8FC),
+    darkScaffold: Color(0xFF071522),
+  ),
+  electricBlue(
+    id: 'electric_blue',
+    label: 'Bright blue',
+    seedColor: Color(0xFF0EA5E9),
+    lightScaffold: Color(0xFFF0FAFF),
+    darkScaffold: Color(0xFF02131E),
+  ),
+  green(
+    id: 'green',
+    label: 'Bright green',
+    seedColor: Color(0xFF20A75A),
+    lightScaffold: Color(0xFFF4FBF5),
+    darkScaffold: Color(0xFF07180D),
+  ),
+  lime(
+    id: 'lime',
+    label: 'Bright lime',
+    seedColor: Color(0xFF84CC16),
+    lightScaffold: Color(0xFFFAFFEC),
+    darkScaffold: Color(0xFF071200),
+  ),
+  pink(
+    id: 'pink',
+    label: 'Bright pink',
+    seedColor: Color(0xFFDF4D8C),
+    lightScaffold: Color(0xFFFFF6FA),
+    darkScaffold: Color(0xFF1D0812),
+  ),
+  hotPink(
+    id: 'hot_pink',
+    label: 'Hot pink',
+    seedColor: Color(0xFFEC4899),
+    lightScaffold: Color(0xFFFFF3FA),
+    darkScaffold: Color(0xFF210313),
+  ),
+  orange(
+    id: 'orange',
+    label: 'Bright orange',
+    seedColor: Color(0xFFF97316),
+    lightScaffold: Color(0xFFFFF8EF),
+    darkScaffold: Color(0xFF1F0B00),
+  ),
+  purple(
+    id: 'purple',
+    label: 'Bright purple',
+    seedColor: Color(0xFFA855F7),
+    lightScaffold: Color(0xFFFCF6FF),
+    darkScaffold: Color(0xFF160421),
   );
+
+  const AppThemePalette({
+    required this.id,
+    required this.label,
+    required this.seedColor,
+    required this.lightScaffold,
+    required this.darkScaffold,
+  });
+
+  final String id;
+  final String label;
+  final Color seedColor;
+  final Color lightScaffold;
+  final Color darkScaffold;
+}
+
+ThemeData _buildAppTheme(AppThemePalette palette, Brightness brightness) {
+  final colorScheme = _appColorScheme(palette, brightness);
   final isDark = brightness == Brightness.dark;
 
   return ThemeData(
     colorScheme: colorScheme,
     scaffoldBackgroundColor: isDark
-        ? const Color(0xFF101816)
-        : const Color(0xFFF7F8F5),
+        ? palette.darkScaffold
+        : palette.lightScaffold,
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.surface,
       foregroundColor: colorScheme.onSurface,
       surfaceTintColor: Colors.transparent,
     ),
     useMaterial3: true,
+  );
+}
+
+ColorScheme _appColorScheme(AppThemePalette palette, Brightness brightness) {
+  return ColorScheme.fromSeed(
+    seedColor: palette.seedColor,
+    brightness: brightness,
   );
 }
 
@@ -118,4 +237,13 @@ ThemeMode? _themeModeFromPreference(String? value) {
 
 String _themeModePreferenceValue(ThemeMode themeMode) {
   return themeMode == ThemeMode.dark ? 'dark' : 'light';
+}
+
+AppThemePalette? _themePaletteFromPreference(String? value) {
+  for (final palette in AppThemePalette.values) {
+    if (palette.id == value) {
+      return palette;
+    }
+  }
+  return null;
 }

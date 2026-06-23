@@ -9,6 +9,7 @@ class _SettingsPrivacyDialog extends StatelessWidget {
     required this.cloudSaveMetadata,
     required this.lockStatus,
     required this.themeMode,
+    required this.themePalette,
   });
 
   final AppSnapshot snapshot;
@@ -16,6 +17,7 @@ class _SettingsPrivacyDialog extends StatelessWidget {
   final CloudSaveMetadata? cloudSaveMetadata;
   final AppLockStatus lockStatus;
   final ThemeMode themeMode;
+  final AppThemePalette themePalette;
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +68,21 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                         : _SettingsPrivacyAction.disableDarkMode,
                   ),
                 ),
+                const SizedBox(height: 10),
+                _ThemePalettePicker(
+                  selectedPalette: themePalette,
+                  onSelected: (palette) => Navigator.of(context).pop(palette),
+                ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Privacy'),
-                const _SettingsNotice(
+                const _SettingsSectionTitle('Information'),
+                _SettingsActionTile(
                   icon: Icons.privacy_tip_outlined,
-                  title: 'Privacy policy',
-                  message:
-                      'All Of Me stores system data on this device. Export and import are explicit actions.',
+                  title: 'Privacy & storage',
+                  subtitle:
+                      'Review device storage, records, backups, and cloud-save status.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.showPrivacyStorageInfo),
                 ),
                 _SettingsActionTile(
                   icon: Icons.feedback_outlined,
@@ -81,30 +91,6 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   onTap: () => Navigator.of(
                     context,
                   ).pop(_SettingsPrivacyAction.showBetaFeedback),
-                ),
-                const SizedBox(height: 18),
-                const _SettingsSectionTitle('Storage'),
-                _SafetyRow(label: 'Storage', value: storeInfo.label),
-                _SafetyRow(label: 'Location', value: storeInfo.location),
-                _SafetyRow(
-                  label: 'Last saved',
-                  value: storeInfo.lastSavedAt == null
-                      ? 'Not saved yet'
-                      : _formatDateTime(storeInfo.lastSavedAt!),
-                ),
-                if (storeInfo.backupsLocation != null)
-                  _SafetyRow(
-                    label: 'Backups',
-                    value: storeInfo.backupsLocation!,
-                  ),
-                _SafetyRow(
-                  label: 'Records',
-                  value:
-                      '${snapshot.members.length} members, ${snapshot.groups.length} groups, ${snapshot.frontSessions.length} sessions, ${snapshot.timeline.length} timeline entries',
-                ),
-                _SafetyRow(
-                  label: 'Schema',
-                  value: snapshot.schemaVersion.toString(),
                 ),
                 const SizedBox(height: 18),
                 const _SettingsSectionTitle('Backup & restore'),
@@ -134,28 +120,6 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 const _SettingsSectionTitle('Cloud save preview'),
-                const _SettingsNotice(
-                  icon: Icons.cloud_queue_outlined,
-                  title: 'Preview only',
-                  message:
-                      'This encrypts a CloudSavePackage with a recovery key and stores it locally until the server exists.',
-                ),
-                _SafetyRow(
-                  label: 'Status',
-                  value: cloudSaveMetadata == null
-                      ? 'No cloud save yet'
-                      : 'Saved ${_formatDateTime(cloudSaveMetadata!.createdAt)}',
-                ),
-                if (cloudSaveMetadata != null) ...[
-                  _SafetyRow(
-                    label: 'Schema',
-                    value: cloudSaveMetadata!.snapshotSchemaVersion.toString(),
-                  ),
-                  _SafetyRow(
-                    label: 'Size',
-                    value: '${cloudSaveMetadata!.payloadByteCount} bytes',
-                  ),
-                ],
                 _SettingsActionTile(
                   icon: Icons.cloud_upload_outlined,
                   title: 'Save now',
@@ -170,7 +134,7 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   title: 'Restore cloud save',
                   subtitle: cloudSaveMetadata == null
                       ? 'Save this device before restoring.'
-                      : 'Restore the latest preview save.',
+                      : 'Latest save: ${_formatDateTime(cloudSaveMetadata!.createdAt)}.',
                   onTap: cloudSaveMetadata == null
                       ? null
                       : () => Navigator.of(
@@ -261,6 +225,104 @@ class _SettingsPrivacyDialog extends StatelessWidget {
   }
 }
 
+class _PrivacyStorageInfoScreen extends StatelessWidget {
+  const _PrivacyStorageInfoScreen({
+    required this.snapshot,
+    required this.storeInfo,
+    required this.cloudSaveMetadata,
+  });
+
+  final AppSnapshot snapshot;
+  final AppStoreInfo storeInfo;
+  final CloudSaveMetadata? cloudSaveMetadata;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Privacy & storage')),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final horizontalPadding = constraints.maxWidth > 720
+                ? (constraints.maxWidth - 680) / 2
+                : 20.0;
+
+            return Scrollbar(
+              thumbVisibility: true,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  20,
+                  horizontalPadding,
+                  32,
+                ),
+                children: [
+                  const _SettingsSectionTitle('Privacy policy'),
+                  const _SettingsNotice(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'On this device',
+                    message:
+                        'All Of Me stores system data on this device. Export and import are explicit actions.',
+                  ),
+                  const SizedBox(height: 18),
+                  const _SettingsSectionTitle('Storage'),
+                  _SafetyRow(label: 'Storage', value: storeInfo.label),
+                  _SafetyRow(label: 'Location', value: storeInfo.location),
+                  _SafetyRow(
+                    label: 'Last saved',
+                    value: storeInfo.lastSavedAt == null
+                        ? 'Not saved yet'
+                        : _formatDateTime(storeInfo.lastSavedAt!),
+                  ),
+                  if (storeInfo.backupsLocation != null)
+                    _SafetyRow(
+                      label: 'Backups',
+                      value: storeInfo.backupsLocation!,
+                    ),
+                  _SafetyRow(
+                    label: 'Records',
+                    value:
+                        '${snapshot.members.length} members, ${snapshot.groups.length} groups, ${snapshot.frontSessions.length} sessions, ${snapshot.timeline.length} timeline entries',
+                  ),
+                  _SafetyRow(
+                    label: 'Schema',
+                    value: snapshot.schemaVersion.toString(),
+                  ),
+                  const SizedBox(height: 18),
+                  const _SettingsSectionTitle('Cloud save preview'),
+                  const _SettingsNotice(
+                    icon: Icons.cloud_queue_outlined,
+                    title: 'Preview only',
+                    message:
+                        'Cloud saves are encrypted with a recovery key and stored locally until the server exists.',
+                  ),
+                  _SafetyRow(
+                    label: 'Status',
+                    value: cloudSaveMetadata == null
+                        ? 'No cloud save yet'
+                        : 'Saved ${_formatDateTime(cloudSaveMetadata!.createdAt)}',
+                  ),
+                  if (cloudSaveMetadata != null) ...[
+                    _SafetyRow(
+                      label: 'Schema',
+                      value: cloudSaveMetadata!.snapshotSchemaVersion
+                          .toString(),
+                    ),
+                    _SafetyRow(
+                      label: 'Size',
+                      value: '${cloudSaveMetadata!.payloadByteCount} bytes',
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsSectionTitle extends StatelessWidget {
   const _SettingsSectionTitle(this.label);
 
@@ -275,6 +337,205 @@ class _SettingsSectionTitle extends StatelessWidget {
         style: Theme.of(
           context,
         ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+class _ThemePalettePicker extends StatelessWidget {
+  const _ThemePalettePicker({
+    required this.selectedPalette,
+    required this.onSelected,
+  });
+
+  final AppThemePalette selectedPalette;
+  final ValueChanged<AppThemePalette> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Theme', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: AppThemePalette.values.map((palette) {
+            return _ThemePaletteSwatch(
+              palette: palette,
+              selected: palette == selectedPalette,
+              onSelected: () => onSelected(palette),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemePaletteSwatch extends StatelessWidget {
+  const _ThemePaletteSwatch({
+    required this.palette,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final AppThemePalette palette;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lightScheme = _appColorScheme(palette, Brightness.light);
+    final darkScheme = _appColorScheme(palette, Brightness.dark);
+
+    return Tooltip(
+      message: selected ? '${palette.label} selected' : palette.label,
+      child: InkWell(
+        onTap: onSelected,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          key: ValueKey('theme-palette-${palette.id}'),
+          width: 160,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ThemePaletteGradientPreview(
+                key: ValueKey('theme-palette-preview-${palette.id}'),
+                palette: palette,
+                lightScheme: lightScheme,
+                darkScheme: darkScheme,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      palette.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ),
+                  if (selected)
+                    Icon(
+                      Icons.check_circle,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemePaletteGradientPreview extends StatelessWidget {
+  const _ThemePaletteGradientPreview({
+    super.key,
+    required this.palette,
+    required this.lightScheme,
+    required this.darkScheme,
+  });
+
+  final AppThemePalette palette;
+  final ColorScheme lightScheme;
+  final ColorScheme darkScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final outline = Theme.of(context).colorScheme.outlineVariant;
+
+    return Container(
+      key: ValueKey('theme-palette-gradient-${palette.id}'),
+      height: 82,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: outline),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            palette.lightScaffold,
+            lightScheme.primaryContainer,
+            palette.seedColor,
+            lightScheme.primary,
+            palette.seedColor,
+            darkScheme.secondary,
+            darkScheme.primaryContainer,
+            palette.darkScaffold,
+          ],
+          stops: const [0, 0.16, 0.28, 0.42, 0.56, 0.7, 0.84, 1],
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(7),
+        child: Align(
+          alignment: Alignment.bottomRight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: lightScheme.surface.withValues(alpha: 0.84),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: lightScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ThemePaletteDot(
+                    key: ValueKey('theme-palette-seed-${palette.id}'),
+                    color: palette.seedColor,
+                  ),
+                  _ThemePaletteDot(color: lightScheme.primary),
+                  _ThemePaletteDot(color: lightScheme.secondary),
+                  _ThemePaletteDot(color: darkScheme.primaryContainer),
+                  _ThemePaletteDot(
+                    key: ValueKey('theme-palette-background-${palette.id}'),
+                    color: palette.darkScaffold,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemePaletteDot extends StatelessWidget {
+  const _ThemePaletteDot({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 16,
+      height: 16,
+      margin: const EdgeInsets.only(left: 3),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
     );
   }
