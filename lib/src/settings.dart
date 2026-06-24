@@ -387,6 +387,13 @@ String _cloudSaveStatusLabel({
   return cloudSaveInfo.isRemote ? 'Connected' : 'Not connected';
 }
 
+class CloudSaveConnection {
+  const CloudSaveConnection({required this.session, required this.accessToken});
+
+  final CloudSaveSession session;
+  final String accessToken;
+}
+
 class _CloudSaveConnectionDialog extends StatefulWidget {
   const _CloudSaveConnectionDialog({this.initialSession});
 
@@ -414,9 +421,7 @@ class _CloudSaveConnectionDialogState
     _accountLabelController = TextEditingController(
       text: initialSession?.accountLabel ?? '',
     );
-    _accessTokenController = TextEditingController(
-      text: initialSession?.accessToken ?? '',
-    );
+    _accessTokenController = TextEditingController();
   }
 
   @override
@@ -432,9 +437,17 @@ class _CloudSaveConnectionDialogState
       final session = CloudSaveSession.create(
         baseUrl: _baseUrlController.text,
         accountLabel: _accountLabelController.text,
-        accessToken: _accessTokenController.text,
       );
-      Navigator.of(context).pop(session);
+      final accessToken = _accessTokenController.text.trim();
+      if (accessToken.isEmpty) {
+        setState(() {
+          _errorText = 'Enter an access token.';
+        });
+        return;
+      }
+      Navigator.of(
+        context,
+      ).pop(CloudSaveConnection(session: session, accessToken: accessToken));
     } catch (_) {
       setState(() {
         _errorText = 'Enter a valid http or https URL.';
@@ -482,7 +495,7 @@ class _CloudSaveConnectionDialogState
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Access token',
-                hintText: 'Optional for local development',
+                hintText: 'Stored securely on this device',
               ),
               onSubmitted: (_) => _submit(),
             ),

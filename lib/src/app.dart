@@ -6,6 +6,7 @@ class AllOfMeApp extends StatefulWidget {
     required this.store,
     this.cloudSaveAdapter,
     this.cloudSaveSessionStore = const SharedPreferencesCloudSaveSessionStore(),
+    this.cloudSaveTokenStore = const SecureCloudSaveTokenStore(),
     this.cloudSavePayloadEncoder,
     this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
@@ -16,6 +17,7 @@ class AllOfMeApp extends StatefulWidget {
   final AppStore store;
   final CloudSaveAdapter? cloudSaveAdapter;
   final CloudSaveSessionStore cloudSaveSessionStore;
+  final CloudSaveTokenStore cloudSaveTokenStore;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -44,7 +46,10 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
         : null;
     _cloudSaveAdapter =
         widget.cloudSaveAdapter ??
-        createCloudSaveAdapterForSession(_cloudSaveSession);
+        createCloudSaveAdapterForSession(
+          _cloudSaveSession,
+          tokenStore: widget.cloudSaveTokenStore,
+        );
     _loadThemePreferences();
     _loadCloudSaveSession();
   }
@@ -60,7 +65,10 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
     }
     setState(() {
       _cloudSaveSession = session;
-      _cloudSaveAdapter = createCloudSaveAdapterForSession(session);
+      _cloudSaveAdapter = createCloudSaveAdapterForSession(
+        session,
+        tokenStore: widget.cloudSaveTokenStore,
+      );
     });
   }
 
@@ -112,17 +120,21 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
     await preferences.setString(_themePalettePreferenceKey, palette.id);
   }
 
-  Future<void> _connectCloudSave(CloudSaveSession session) async {
+  Future<void> _connectCloudSave(CloudSaveConnection connection) async {
     if (!_managesCloudSaveAdapter) {
       return;
     }
-    await widget.cloudSaveSessionStore.save(session);
+    await widget.cloudSaveSessionStore.save(connection.session);
+    await widget.cloudSaveTokenStore.save(connection.accessToken);
     if (!mounted) {
       return;
     }
     setState(() {
-      _cloudSaveSession = session;
-      _cloudSaveAdapter = createCloudSaveAdapterForSession(session);
+      _cloudSaveSession = connection.session;
+      _cloudSaveAdapter = createCloudSaveAdapterForSession(
+        connection.session,
+        tokenStore: widget.cloudSaveTokenStore,
+      );
     });
   }
 
@@ -131,6 +143,7 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
       return;
     }
     await widget.cloudSaveSessionStore.clear();
+    await widget.cloudSaveTokenStore.clear();
     if (!mounted) {
       return;
     }

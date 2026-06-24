@@ -8,16 +8,17 @@ const String cloudSaveAccountLabelEnvironmentKey =
 
 class CloudSaveSessionCredentialsProvider
     implements CloudSaveCredentialsProvider {
-  const CloudSaveSessionCredentialsProvider(this.session);
+  const CloudSaveSessionCredentialsProvider(this.tokenStore);
 
-  final CloudSaveSession session;
+  final CloudSaveTokenStore tokenStore;
 
   @override
-  String? bearerToken() => session.accessToken;
+  Future<String?> bearerToken() => tokenStore.load();
 }
 
 CloudSaveAdapter createDefaultCloudSaveAdapter({
   CloudSaveSession? session,
+  CloudSaveTokenStore tokenStore = const SecureCloudSaveTokenStore(),
   String baseUrl = const String.fromEnvironment(cloudSaveBaseUrlEnvironmentKey),
   String accountLabel = const String.fromEnvironment(
     cloudSaveAccountLabelEnvironmentKey,
@@ -29,10 +30,14 @@ CloudSaveAdapter createDefaultCloudSaveAdapter({
           baseUrl: baseUrl,
           accountLabel: accountLabel,
         ),
+    tokenStore: tokenStore,
   );
 }
 
-CloudSaveAdapter createCloudSaveAdapterForSession(CloudSaveSession? session) {
+CloudSaveAdapter createCloudSaveAdapterForSession(
+  CloudSaveSession? session, {
+  CloudSaveTokenStore tokenStore = const SecureCloudSaveTokenStore(),
+}) {
   if (session == null) {
     return const SharedPreferencesCloudSaveAdapter();
   }
@@ -40,7 +45,7 @@ CloudSaveAdapter createCloudSaveAdapterForSession(CloudSaveSession? session) {
   return RemoteCloudSaveAdapter(
     baseUrl: session.baseUri,
     accountLabel: session.accountLabel,
-    credentialsProvider: CloudSaveSessionCredentialsProvider(session),
+    credentialsProvider: CloudSaveSessionCredentialsProvider(tokenStore),
   );
 }
 

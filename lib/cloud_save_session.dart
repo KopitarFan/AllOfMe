@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CloudSaveSession {
@@ -7,20 +8,17 @@ class CloudSaveSession {
     required this.baseUrl,
     required this.accountLabel,
     required this.connectedAt,
-    this.accessToken,
   });
 
   final String baseUrl;
   final String accountLabel;
   final DateTime connectedAt;
-  final String? accessToken;
 
   Uri get baseUri => Uri.parse(baseUrl);
 
   factory CloudSaveSession.create({
     required String baseUrl,
     String? accountLabel,
-    String? accessToken,
     DateTime? connectedAt,
   }) {
     final normalizedBaseUrl = _normalizeBaseUrl(baseUrl);
@@ -28,7 +26,6 @@ class CloudSaveSession {
     return CloudSaveSession._(
       baseUrl: normalizedBaseUrl.toString(),
       accountLabel: label,
-      accessToken: _trimmedOrNull(accessToken),
       connectedAt: connectedAt ?? DateTime.now(),
     );
   }
@@ -42,7 +39,6 @@ class CloudSaveSession {
     return CloudSaveSession.create(
       baseUrl: rawBaseUrl,
       accountLabel: json['accountLabel'] as String?,
-      accessToken: json['accessToken'] as String?,
       connectedAt: connectedAt,
     );
   }
@@ -52,7 +48,6 @@ class CloudSaveSession {
       'baseUrl': baseUrl,
       'accountLabel': accountLabel,
       'connectedAt': connectedAt.toIso8601String(),
-      if (accessToken != null) 'accessToken': accessToken,
     };
   }
 }
@@ -117,6 +112,63 @@ class MemoryCloudSaveSessionStore implements CloudSaveSessionStore {
   @override
   Future<void> clear() async {
     _session = null;
+  }
+}
+
+abstract class CloudSaveTokenStore {
+  Future<String?> load();
+
+  Future<void> save(String token);
+
+  Future<void> clear();
+}
+
+class SecureCloudSaveTokenStore implements CloudSaveTokenStore {
+  const SecureCloudSaveTokenStore([
+    this._storage = const FlutterSecureStorage(),
+  ]);
+
+  static const _tokenKey = 'all_of_me.cloud_save.access_token.v1';
+
+  final FlutterSecureStorage _storage;
+
+  @override
+  Future<String?> load() {
+    return _storage.read(key: _tokenKey);
+  }
+
+  @override
+  Future<void> save(String token) async {
+    final trimmed = _trimmedOrNull(token);
+    if (trimmed == null) {
+      await clear();
+      return;
+    }
+    await _storage.write(key: _tokenKey, value: trimmed);
+  }
+
+  @override
+  Future<void> clear() {
+    return _storage.delete(key: _tokenKey);
+  }
+}
+
+class MemoryCloudSaveTokenStore implements CloudSaveTokenStore {
+  MemoryCloudSaveTokenStore([this._token]);
+
+  String? _token;
+
+  @override
+  Future<String?> load() async => _token;
+
+  @override
+  Future<void> save(String token) async {
+    _token = _trimmedOrNull(token);
+  }
+
+  @override
+  Future<void> clear() async {
+    _token = null;
   }
 }
 

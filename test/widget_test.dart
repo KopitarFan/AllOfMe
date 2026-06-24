@@ -130,6 +130,7 @@ void main() {
     AppStore? store,
     CloudSaveAdapter? cloudSaveAdapter,
     CloudSaveSessionStore? cloudSaveSessionStore,
+    CloudSaveTokenStore? cloudSaveTokenStore,
     CloudSavePayloadEncoder? cloudSavePayloadEncoder,
     CloudSavePayloadDecoder? cloudSavePayloadDecoder,
     AppAuthenticator? authenticator,
@@ -145,6 +146,7 @@ void main() {
         cloudSaveAdapter: cloudSaveAdapter,
         cloudSaveSessionStore:
             cloudSaveSessionStore ?? MemoryCloudSaveSessionStore(),
+        cloudSaveTokenStore: cloudSaveTokenStore ?? MemoryCloudSaveTokenStore(),
         cloudSavePayloadEncoder:
             cloudSavePayloadEncoder ?? const CloudSavePlaintextPayloadEncoder(),
         cloudSavePayloadDecoder: cloudSavePayloadDecoder,
@@ -304,7 +306,12 @@ void main() {
     tester,
   ) async {
     final sessionStore = MemoryCloudSaveSessionStore();
-    await pumpApp(tester, cloudSaveSessionStore: sessionStore);
+    final tokenStore = MemoryCloudSaveTokenStore();
+    await pumpApp(
+      tester,
+      cloudSaveSessionStore: sessionStore,
+      cloudSaveTokenStore: tokenStore,
+    );
 
     await tester.tap(find.byTooltip('Settings and privacy'));
     await tester.pumpAndSettle();
@@ -329,7 +336,8 @@ void main() {
     final connectedSession = await sessionStore.load();
     expect(connectedSession?.baseUrl, 'https://cloud.example.test/api/');
     expect(connectedSession?.accountLabel, 'Test cloud');
-    expect(connectedSession?.accessToken, 'dev-token');
+    expect(connectedSession?.toJson().containsKey('accessToken'), isFalse);
+    expect(await tokenStore.load(), 'dev-token');
     expect(find.text('Cloud save connected to Test cloud.'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Settings and privacy'));
@@ -345,6 +353,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(await sessionStore.load(), isNull);
+    expect(await tokenStore.load(), isNull);
 
     await tester.tap(find.byTooltip('Settings and privacy'));
     await tester.pumpAndSettle();

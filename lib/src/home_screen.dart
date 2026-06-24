@@ -21,7 +21,8 @@ class HomeScreen extends StatefulWidget {
   final AppStore store;
   final CloudSaveAdapter cloudSaveAdapter;
   final CloudSaveSession? cloudSaveSession;
-  final Future<void> Function(CloudSaveSession session)? onCloudSaveConnect;
+  final Future<void> Function(CloudSaveConnection connection)?
+  onCloudSaveConnect;
   final Future<void> Function()? onCloudSaveDisconnect;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
@@ -942,22 +943,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    final session = await showDialog<CloudSaveSession>(
+    final connection = await showDialog<CloudSaveConnection>(
       context: context,
       builder: (context) =>
           _CloudSaveConnectionDialog(initialSession: widget.cloudSaveSession),
     );
-    if (session == null) {
+    if (connection == null) {
       return;
     }
 
-    await onConnect(session);
+    await onConnect(connection);
     if (!mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Cloud save connected to ${session.accountLabel}.'),
+        content: Text(
+          'Cloud save connected to ${connection.session.accountLabel}.',
+        ),
       ),
     );
   }
