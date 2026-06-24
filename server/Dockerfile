@@ -27,12 +27,15 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+ARG SOURCE_URL="https://github.com/KopitarFan/AllOfMe"
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV LOG_LEVEL=info
 ENV CLOUD_SAVE_STORE=local
 ENV CLOUD_SAVE_DATA_DIR=/app/data/cloud-saves
+LABEL org.opencontainers.image.source="${SOURCE_URL}" \
+  org.opencontainers.image.description="All Of Me Fastify cloud-save API"
 
 WORKDIR /app
 
