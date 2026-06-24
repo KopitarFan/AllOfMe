@@ -132,6 +132,8 @@ void main() {
     CloudSaveSessionStore? cloudSaveSessionStore,
     CloudSaveTokenStore? cloudSaveTokenStore,
     CloudSaveDeviceRegistrar? cloudSaveDeviceRegistrar,
+    CloudSaveDeviceLinkCodeCreator? cloudSaveDeviceLinkCodeCreator,
+    CloudSaveDeviceLinkRedeemer? cloudSaveDeviceLinkRedeemer,
     CloudSavePayloadEncoder? cloudSavePayloadEncoder,
     CloudSavePayloadDecoder? cloudSavePayloadDecoder,
     AppAuthenticator? authenticator,
@@ -149,6 +151,8 @@ void main() {
             cloudSaveSessionStore ?? MemoryCloudSaveSessionStore(),
         cloudSaveTokenStore: cloudSaveTokenStore ?? MemoryCloudSaveTokenStore(),
         cloudSaveDeviceRegistrar: cloudSaveDeviceRegistrar,
+        cloudSaveDeviceLinkCodeCreator: cloudSaveDeviceLinkCodeCreator,
+        cloudSaveDeviceLinkRedeemer: cloudSaveDeviceLinkRedeemer,
         cloudSavePayloadEncoder:
             cloudSavePayloadEncoder ?? const CloudSavePlaintextPayloadEncoder(),
         cloudSavePayloadDecoder: cloudSavePayloadDecoder,
@@ -411,6 +415,104 @@ void main() {
     expect(registeredDeviceLabel, 'Miguel iPhone');
     expect((await sessionStore.load())?.accountLabel, 'Test cloud');
     expect(await tokenStore.load(), 'registered-token');
+    expect(find.text('Cloud save connected to Test cloud.'), findsOneWidget);
+  });
+
+  testWidgets('creates cloud save link code for another device', (
+    tester,
+  ) async {
+    final session = CloudSaveSession.create(
+      baseUrl: 'https://cloud.example.test/api',
+      accountLabel: 'Test cloud',
+    );
+    CloudSaveSession? linkCodeSession;
+
+    await pumpApp(
+      tester,
+      cloudSaveSessionStore: MemoryCloudSaveSessionStore(session),
+      cloudSaveTokenStore: MemoryCloudSaveTokenStore('owner-token'),
+      cloudSaveDeviceLinkCodeCreator: (session) async {
+        linkCodeSession = session;
+        return CloudSaveDeviceLinkCode(
+          code: 'AOM-12345-ABCDE',
+          expiresAt: DateTime(2026, 6, 24, 12, 10),
+        );
+      },
+    );
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Disconnect cloud save'), findsOneWidget);
+    expect(find.text('Add another device'), findsOneWidget);
+
+    await tapSettingsTile(tester, 'Add another device');
+    await tester.pumpAndSettle();
+
+    expect(linkCodeSession?.baseUrl, 'https://cloud.example.test/api/');
+    expect(find.text('AOM-12345-ABCDE'), findsOneWidget);
+    expect(find.text('Expires 6/24/2026 12:10 PM.'), findsOneWidget);
+  });
+
+  testWidgets('links existing cloud save account from settings', (
+    tester,
+  ) async {
+    final sessionStore = MemoryCloudSaveSessionStore();
+    final tokenStore = MemoryCloudSaveTokenStore();
+    CloudSaveSession? linkedSession;
+    String? linkedCode;
+    String? linkedDeviceLabel;
+
+    await pumpApp(
+      tester,
+      cloudSaveSessionStore: sessionStore,
+      cloudSaveTokenStore: tokenStore,
+      cloudSaveDeviceLinkRedeemer:
+          (session, {required code, deviceLabel}) async {
+            linkedSession = session;
+            linkedCode = code;
+            linkedDeviceLabel = deviceLabel;
+            return const CloudSaveDeviceRegistration(
+              accountId: 'account-test',
+              deviceId: 'device-linked',
+              deviceLabel: 'Miguel iPad',
+              token: 'linked-token',
+              tokenType: 'Bearer',
+            );
+          },
+    );
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Connect cloud save');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Existing'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server URL'),
+      'https://cloud.example.test/api',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Account label'),
+      'Test cloud',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Device label'),
+      'Miguel iPad',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Link code'),
+      'aom-12345-abcde',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.pumpAndSettle();
+
+    expect(linkedSession?.baseUrl, 'https://cloud.example.test/api/');
+    expect(linkedCode, 'aom-12345-abcde');
+    expect(linkedDeviceLabel, 'Miguel iPad');
+    expect((await sessionStore.load())?.accountLabel, 'Test cloud');
+    expect(await tokenStore.load(), 'linked-token');
     expect(find.text('Cloud save connected to Test cloud.'), findsOneWidget);
   });
 

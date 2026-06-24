@@ -147,6 +147,15 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                           : _SettingsPrivacyAction.connectCloudSave,
                     ),
                   ),
+                if (canManageCloudSave && cloudSaveInfo.isRemote)
+                  _SettingsActionTile(
+                    icon: Icons.link_outlined,
+                    title: 'Add another device',
+                    subtitle: 'Create a one-time link code.',
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(_SettingsPrivacyAction.showCloudSaveLinkCode),
+                  ),
                 _SettingsActionTile(
                   icon: Icons.cloud_upload_outlined,
                   title: 'Save now',
@@ -394,14 +403,18 @@ class CloudSaveConnection {
   final String accessToken;
 }
 
+enum _CloudSaveConnectionMode { startNew, linkExisting }
+
 class _CloudSaveConnectionDialog extends StatefulWidget {
   const _CloudSaveConnectionDialog({
     this.initialSession,
     required this.registerDevice,
+    required this.redeemDeviceLinkCode,
   });
 
   final CloudSaveSession? initialSession;
   final CloudSaveDeviceRegistrar registerDevice;
+  final CloudSaveDeviceLinkRedeemer redeemDeviceLinkCode;
 
   @override
   State<_CloudSaveConnectionDialog> createState() =>
@@ -414,6 +427,8 @@ class _CloudSaveConnectionDialogState
   late final TextEditingController _accountLabelController;
   late final TextEditingController _deviceLabelController;
   late final TextEditingController _accessTokenController;
+  late final TextEditingController _linkCodeController;
+  _CloudSaveConnectionMode _mode = _CloudSaveConnectionMode.startNew;
   String? _errorText;
   bool _isSubmitting = false;
 
@@ -429,6 +444,7 @@ class _CloudSaveConnectionDialogState
     );
     _deviceLabelController = TextEditingController(text: 'This device');
     _accessTokenController = TextEditingController();
+    _linkCodeController = TextEditingController();
   }
 
   @override
@@ -437,6 +453,7 @@ class _CloudSaveConnectionDialogState
     _accountLabelController.dispose();
     _deviceLabelController.dispose();
     _accessTokenController.dispose();
+    _linkCodeController.dispose();
     super.dispose();
   }
 
@@ -458,11 +475,18 @@ class _CloudSaveConnectionDialogState
       return;
     }
 
-    final manualAccessToken = _accessTokenController.text.trim();
-    if (manualAccessToken.isNotEmpty) {
-      Navigator.of(context).pop(
-        CloudSaveConnection(session: session, accessToken: manualAccessToken),
-      );
+    if (_mode == _CloudSaveConnectionMode.startNew) {
+      final manualAccessToken = _accessTokenController.text.trim();
+      if (manualAccessToken.isNotEmpty) {
+        Navigator.of(context).pop(
+          CloudSaveConnection(session: session, accessToken: manualAccessToken),
+        );
+        return;
+      }
+    } else if (_linkCodeController.text.trim().isEmpty) {
+      setState(() {
+        _errorText = 'Enter a link code.';
+      });
       return;
     }
 
@@ -472,10 +496,18 @@ class _CloudSaveConnectionDialogState
     });
 
     try {
-      final registration = await widget.registerDevice(
-        session,
-        deviceLabel: _nullableTrimmed(_deviceLabelController.text),
-      );
+      final registration = switch (_mode) {
+        _CloudSaveConnectionMode.startNew => await widget.registerDevice(
+          session,
+          deviceLabel: _nullableTrimmed(_deviceLabelController.text),
+        ),
+        _CloudSaveConnectionMode.linkExisting =>
+          await widget.redeemDeviceLinkCode(
+            session,
+            code: _linkCodeController.text,
+            deviceLabel: _nullableTrimmed(_deviceLabelController.text),
+          ),
+      };
       if (!mounted) {
         return;
       }
@@ -486,8 +518,9 @@ class _CloudSaveConnectionDialogState
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorText =
-              'Could not register this device. Check the server URL and try again.';
+          _errorText = _mode == _CloudSaveConnectionMode.linkExisting
+              ? 'Could not link this device. Check the server URL and code.'
+              : 'Could not register this device. Check the server URL and try again.';
         });
       }
     }
@@ -509,6 +542,30 @@ class _CloudSaveConnectionDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SegmentedButton<_CloudSaveConnectionMode>(
+              segments: const [
+                ButtonSegment<_CloudSaveConnectionMode>(
+                  value: _CloudSaveConnectionMode.startNew,
+                  label: Text('New'),
+                  icon: Icon(Icons.cloud_sync_outlined),
+                ),
+                ButtonSegment<_CloudSaveConnectionMode>(
+                  value: _CloudSaveConnectionMode.linkExisting,
+                  label: Text('Existing'),
+                  icon: Icon(Icons.link_outlined),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: _isSubmitting
+                  ? null
+                  : (selection) {
+                      setState(() {
+                        _mode = selection.single;
+                        _errorText = null;
+                      });
+                    },
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _baseUrlController,
               keyboardType: TextInputType.url,
@@ -537,15 +594,27 @@ class _CloudSaveConnectionDialogState
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _accessTokenController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Access token (optional)',
-                hintText: 'Leave blank to register this device',
+            if (_mode == _CloudSaveConnectionMode.linkExisting)
+              TextField(
+                controller: _linkCodeController,
+                textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Link code',
+                  hintText: 'AOM-12345-ABCDE',
+                ),
+                onSubmitted: (_) => _submit(),
+              )
+            else
+              TextField(
+                controller: _accessTokenController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Access token (optional)',
+                  hintText: 'Leave blank to register this device',
+                ),
+                onSubmitted: (_) => _submit(),
               ),
-              onSubmitted: (_) => _submit(),
-            ),
             if (_errorText != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -569,6 +638,62 @@ class _CloudSaveConnectionDialogState
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Connect'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CloudSaveDeviceLinkCodeDialog extends StatelessWidget {
+  const _CloudSaveDeviceLinkCodeDialog(this.linkCode);
+
+  final CloudSaveDeviceLinkCode linkCode;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.link_outlined),
+          SizedBox(width: 10),
+          Expanded(child: Text('Add another device')),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: SelectableText(
+                linkCode.code,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Expires ${_formatDateTime(linkCode.expiresAt.toLocal())}.'),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done'),
+        ),
+        FilledButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: linkCode.code));
+            if (!context.mounted) {
+              return;
+            }
+            Navigator.of(context).pop();
+          },
+          icon: const Icon(Icons.copy_outlined),
+          label: const Text('Copy'),
         ),
       ],
     );

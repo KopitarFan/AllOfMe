@@ -72,6 +72,25 @@ class CloudSaveDeviceRegistration {
   }
 }
 
+class CloudSaveDeviceLinkCode {
+  const CloudSaveDeviceLinkCode({required this.code, required this.expiresAt});
+
+  final String code;
+  final DateTime expiresAt;
+
+  factory CloudSaveDeviceLinkCode.fromJson(Map<String, Object?> json) {
+    final code = json['code'];
+    final expiresAt = DateTime.tryParse(json['expiresAt'] as String? ?? '');
+    if (code is! String || code.trim().isEmpty || expiresAt == null) {
+      throw const CloudSaveRemoteException(
+        'Cloud save device link-code response was invalid.',
+      );
+    }
+
+    return CloudSaveDeviceLinkCode(code: code, expiresAt: expiresAt);
+  }
+}
+
 class RemoteCloudSaveAuthClient {
   RemoteCloudSaveAuthClient({
     required Uri baseUrl,
@@ -81,6 +100,8 @@ class RemoteCloudSaveAuthClient {
        _client = client ?? http.Client();
 
   static const _registerDevicePath = 'v1/devices/register';
+  static const _createDeviceLinkCodePath = 'v1/devices/link-codes';
+  static const _redeemDeviceLinkCodePath = 'v1/devices/link';
 
   final Uri baseUrl;
   final Duration timeout;
@@ -99,13 +120,48 @@ class RemoteCloudSaveAuthClient {
     );
   }
 
-  Future<http.Response> _postJson(String path, Map<String, Object?> body) {
+  Future<CloudSaveDeviceLinkCode> createDeviceLinkCode({
+    required String accessToken,
+  }) async {
+    final response = await _postJson(
+      _createDeviceLinkCodePath,
+      const {},
+      accessToken: accessToken,
+    );
+    _ensureSuccess(response, action: 'create a device link code');
+    return CloudSaveDeviceLinkCode.fromJson(
+      _decodeObject(response, action: 'read device link code'),
+    );
+  }
+
+  Future<CloudSaveDeviceRegistration> redeemDeviceLinkCode({
+    required String code,
+    String? deviceLabel,
+  }) async {
+    final response = await _postJson(_redeemDeviceLinkCodePath, {
+      'code': code.trim(),
+      if (_trimmedOrNull(deviceLabel) != null)
+        'deviceLabel': _trimmedOrNull(deviceLabel),
+    });
+    _ensureSuccess(response, action: 'link this device to cloud save');
+    return CloudSaveDeviceRegistration.fromJson(
+      _decodeObject(response, action: 'read linked device registration'),
+    );
+  }
+
+  Future<http.Response> _postJson(
+    String path,
+    Map<String, Object?> body, {
+    String? accessToken,
+  }) {
+    final bearerToken = _trimmedOrNull(accessToken);
     return _client
         .post(
           _resolve(path),
-          headers: const {
+          headers: {
             'accept': 'application/json',
             'content-type': 'application/json; charset=utf-8',
+            if (bearerToken != null) 'authorization': 'Bearer $bearerToken',
           },
           body: jsonEncode(body),
         )
