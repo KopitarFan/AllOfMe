@@ -35,6 +35,18 @@ pnpm build
 GitHub Actions runs the same checks, plus a production Docker image build, in
 `Server CI`.
 
+## Image Publishing
+
+`Server Image` publishes the production image to GitHub Container Registry
+after `Server CI` succeeds on `main`, when it is run manually, or when a
+`server-v*` tag is pushed.
+
+Published image:
+
+```sh
+ghcr.io/kopitarfan/all-of-me-server:latest
+```
+
 ## Docker
 
 Build the production image from the server directory:
