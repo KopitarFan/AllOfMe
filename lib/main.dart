@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_lock.dart';
 import 'cloud_save.dart';
+import 'cloud_save_factory.dart';
 import 'models.dart';
 import 'storage.dart';
 import 'storage_factory.dart';
@@ -37,5 +38,6 @@ const String _issuesUrl = 'https://github.com/KopitarFan/AllOfMe/issues';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await createDefaultAppStore();
-  runApp(AllOfMeApp(store: store));
+  final cloudSaveAdapter = createDefaultCloudSaveAdapter();
+  runApp(AllOfMeApp(store: store, cloudSaveAdapter: cloudSaveAdapter));
 }

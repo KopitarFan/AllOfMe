@@ -259,7 +259,10 @@ void main() {
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
     expect(find.text('Cloud save preview'), findsOneWidget);
-    expect(find.text('Save this device before restoring.'), findsOneWidget);
+    expect(
+      find.text('Create a preview save before restoring.'),
+      findsOneWidget,
+    );
     expect(find.text('Save now'), findsOneWidget);
     expect(find.text('Restore cloud save'), findsOneWidget);
     expect(find.text('Recently deleted'), findsOneWidget);

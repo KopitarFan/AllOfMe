@@ -42,6 +42,7 @@ dependencies:
   local_auth: ^3.0.1
   drift: ^2.34.0
   cryptography: ^2.9.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
