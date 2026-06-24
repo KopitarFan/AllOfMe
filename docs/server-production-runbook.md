@@ -44,6 +44,69 @@ only contain non-secret defaults.
 - `Server Image`: publishes the production image to GitHub Container Registry
   after `Server CI` succeeds on `main`, when run manually, or when a
   `server-v*` tag is pushed.
+- `Server Deploy`: manual production deploy. It can run the production backup
+  script, update the Compose image tag, restart the API service, and smoke test
+  the public health endpoint.
+
+## Manual Deploy Workflow
+
+`Server Deploy` requires these GitHub repository secrets:
+
+- `ALLOFME_DEPLOY_HOST`: Vultr host name or IP, for example
+  `api.allofmeapp.com`.
+- `ALLOFME_DEPLOY_USER`: SSH user on the Vultr host.
+- `ALLOFME_DEPLOY_SSH_KEY`: private SSH key for that user.
+
+Create a deploy SSH key from a local machine:
+
+```sh
+ssh-keygen -t ed25519 -f ~/.ssh/allofme_github_deploy -C github-actions-allofme
+```
+
+Install the public key for the Vultr deploy user:
+
+```sh
+ssh-copy-id -i ~/.ssh/allofme_github_deploy.pub DEPLOY_USER@api.allofmeapp.com
+```
+
+Verify the key can connect:
+
+```sh
+ssh -i ~/.ssh/allofme_github_deploy DEPLOY_USER@api.allofmeapp.com 'hostname'
+```
+
+Add repository secrets in GitHub:
+
+1. Open the repository on GitHub.
+2. Go to `Settings`.
+3. Go to `Secrets and variables`.
+4. Go to `Actions`.
+5. Add `ALLOFME_DEPLOY_HOST`.
+6. Add `ALLOFME_DEPLOY_USER`.
+7. Add `ALLOFME_DEPLOY_SSH_KEY` using the full contents of
+   `~/.ssh/allofme_github_deploy`.
+
+The deploy user must be able to run these commands through `sudo` without an
+interactive password prompt:
+
+- `/usr/local/sbin/allofme-backup`
+- `docker compose`
+- `sed`
+- `tee`
+
+If the workflow deploys as `root`, no extra sudoers file is needed. If it
+deploys as a non-root user, configure passwordless sudo for the deploy commands
+before running the workflow.
+
+To deploy from GitHub:
+
+1. Open the repository on GitHub.
+2. Go to `Actions`.
+3. Choose `Server Deploy`.
+4. Click `Run workflow`.
+5. Choose the image tag. Use `latest` for the normal path.
+6. Leave `run_backup` enabled unless there is a specific reason to skip it.
+7. Start the workflow and wait for the smoke test to pass.
 
 ## Production Compose
 
