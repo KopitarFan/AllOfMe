@@ -20,6 +20,11 @@ The Fastify app listens inside Docker on port `3000`. Docker publishes that
 port on `127.0.0.1:3000` only. Caddy listens publicly on ports `80` and `443`
 and proxies HTTPS traffic to `127.0.0.1:3000`.
 
+Production sets `TRUST_PROXY=true` so Fastify uses the original client IP from
+Caddy's forwarded headers for rate limiting. Keep Docker bound to
+`127.0.0.1:3000`; do not expose port `3000` publicly with trusted proxy headers
+enabled.
+
 ## Host Paths
 
 - App directory: `/opt/allofme/app`
@@ -130,6 +135,40 @@ The data directory must be writable by the container's `node` user:
 sudo mkdir -p /opt/allofme/cloud-saves
 sudo chown -R 1000:1000 /opt/allofme/cloud-saves
 ```
+
+## Abuse Controls
+
+The API has two layers of abuse protection:
+
+- Body-size cap through `CLOUD_SAVE_MAX_PAYLOAD_BYTES`.
+- In-memory rate limiting through `@fastify/rate-limit`.
+
+Current production defaults:
+
+```sh
+TRUST_PROXY=true
+CLOUD_SAVE_MAX_PAYLOAD_BYTES=10485760
+RATE_LIMIT_MAX=300
+RATE_LIMIT_TIME_WINDOW_MS=60000
+RATE_LIMIT_REGISTRATION_MAX=5
+RATE_LIMIT_REGISTRATION_TIME_WINDOW_MS=900000
+RATE_LIMIT_SAVE_MAX=30
+RATE_LIMIT_SAVE_TIME_WINDOW_MS=60000
+```
+
+Rate-limit behavior:
+
+- Global `/v1` limit: `300` requests per client IP per minute.
+- `POST /v1/devices/register`: `5` registrations per client IP per 15 minutes.
+- `POST /v1/saves`: `30` uploads per bearer token per minute.
+- `GET /healthz`: not rate limited.
+
+The rate-limit store is in memory and is appropriate for the current single
+container. If production moves to multiple API containers, switch rate limiting
+to a shared store such as Redis so limits apply across all replicas.
+
+Clients that exceed a limit receive HTTP `429 Too Many Requests` with
+rate-limit headers, including `retry-after`.
 
 ## Deploy Or Restart
 

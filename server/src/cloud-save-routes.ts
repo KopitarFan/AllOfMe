@@ -1,6 +1,6 @@
-import { type FastifyInstance } from 'fastify';
+import { type FastifyInstance, type FastifyRequest } from 'fastify';
 
-import { type AuthStore } from './auth-store.js';
+import { type AuthStore, hashAuthToken } from './auth-store.js';
 import { requireAuthenticatedDevice } from './auth-request.js';
 import {
   parseCloudSaveId,
@@ -61,21 +61,59 @@ export async function registerCloudSaveRoutes(
     }
   );
 
-  app.post('/v1/saves', async (request, reply) => {
-    const device = await requireAuthenticatedDevice(
-      app,
-      options.authStore,
-      request
-    );
-    const cloudSavePackage = parseRequestBody(request.body, options.config);
-    const metadata = await options.store.save(device, cloudSavePackage);
+  app.post(
+    '/v1/saves',
+    {
+      config: {
+        rateLimit: {
+          groupId: 'cloud-save-upload',
+          keyGenerator: cloudSaveUploadRateLimitKey,
+          max: options.config.rateLimit.saveMax,
+          timeWindow: options.config.rateLimit.saveTimeWindowMs
+        }
+      }
+    },
+    async (request, reply) => {
+      const device = await requireAuthenticatedDevice(
+        app,
+        options.authStore,
+        request
+      );
+      const cloudSavePackage = parseRequestBody(request.body, options.config);
+      const metadata = await options.store.save(device, cloudSavePackage);
 
-    return reply.code(201).send(metadata);
-  });
+      return reply.code(201).send(metadata);
+    }
+  );
 }
 
 function parseRequestBody(body: unknown, config: AppConfig) {
   return parseCloudSavePackage(body, {
     maxPayloadBytes: config.cloudSaveMaxPayloadBytes
   });
+}
+
+function cloudSaveUploadRateLimitKey(request: FastifyRequest): string {
+  const authorization = request.headers.authorization;
+  const token = parseBearerToken(authorization);
+
+  return token == null ? `ip:${request.ip}` : `device:${hashAuthToken(token)}`;
+}
+
+function parseBearerToken(authorization: string | undefined): string | null {
+  if (authorization == null) {
+    return null;
+  }
+
+  const [scheme, token, ...extra] = authorization.split(/\s+/);
+  if (
+    scheme !== 'Bearer' ||
+    token == null ||
+    token.length === 0 ||
+    extra.length > 0
+  ) {
+    return null;
+  }
+
+  return token;
 }

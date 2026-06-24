@@ -1,3 +1,4 @@
+import fastifyRateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance } from 'fastify';
 
@@ -19,6 +20,7 @@ export async function buildApp(
 ): Promise<FastifyInstance> {
   const app = Fastify({
     bodyLimit: config.cloudSaveMaxPayloadBytes * 2 + 16 * 1024,
+    trustProxy: config.trustProxy,
     logger:
       config.nodeEnv === 'test'
         ? false
@@ -43,16 +45,31 @@ export async function buildApp(
   });
 
   await app.register(sensible);
-  await registerAuthRoutes(app, { authStore });
+  await app.register(fastifyRateLimit, {
+    global: true,
+    max: config.rateLimit.max,
+    timeWindow: config.rateLimit.timeWindowMs,
+    keyGenerator: (request) => `ip:${request.ip}`
+  });
+
+  await registerAuthRoutes(app, { authStore, config });
   await registerCloudSaveRoutes(app, {
     authStore,
     config,
     store: cloudSaveStore
   });
 
-  app.get('/healthz', async () => {
-    return { ok: true };
-  });
+  app.get(
+    '/healthz',
+    {
+      config: {
+        rateLimit: false
+      }
+    },
+    async () => {
+      return { ok: true };
+    }
+  );
 
   return app;
 }
