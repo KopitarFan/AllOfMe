@@ -39,6 +39,8 @@ uses in-memory rate limits for the single production container:
   default `5`.
 - `RATE_LIMIT_REGISTRATION_TIME_WINDOW_MS`: registration window, default
   `900000`.
+- `DEVICE_LINK_CODE_TTL_MS`: one-time new-device link-code lifetime, default
+  `600000`.
 - `RATE_LIMIT_SAVE_MAX`: save uploads per bearer token per window, default
   `30`.
 - `RATE_LIMIT_SAVE_TIME_WINDOW_MS`: save-upload window, default `60000`.
@@ -106,6 +108,11 @@ ALLOFME_SERVER_IMAGE=all-of-me-server:local \
 - `GET /healthz` returns `{ "ok": true }`.
 - `POST /v1/devices/register` creates a new account/device pair and returns a
   bearer token once. The server stores only a token hash.
+- `POST /v1/devices/link-codes` requires `Authorization: Bearer <token>` and
+  creates a short-lived one-time code for adding another device to the same
+  account.
+- `POST /v1/devices/link` redeems a valid link code with an optional device
+  label and returns a bearer token for the same account.
 - `POST /v1/saves` requires `Authorization: Bearer <token>`, accepts one
   encrypted `CloudSavePackage`, and returns metadata when the package passes
   envelope, payload size, and checksum validation.

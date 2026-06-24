@@ -148,6 +148,7 @@ Current production defaults:
 ```sh
 TRUST_PROXY=true
 CLOUD_SAVE_MAX_PAYLOAD_BYTES=10485760
+DEVICE_LINK_CODE_TTL_MS=600000
 RATE_LIMIT_MAX=300
 RATE_LIMIT_TIME_WINDOW_MS=60000
 RATE_LIMIT_REGISTRATION_MAX=5
@@ -160,6 +161,7 @@ Rate-limit behavior:
 
 - Global `/v1` limit: `300` requests per client IP per minute.
 - `POST /v1/devices/register`: `5` registrations per client IP per 15 minutes.
+- `POST /v1/devices/link`: `5` link-code redemptions per client IP per 15 minutes.
 - `POST /v1/saves`: `30` uploads per bearer token per minute.
 - `GET /healthz`: not rate limited.
 
