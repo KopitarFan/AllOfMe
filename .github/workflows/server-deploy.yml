@@ -1,0 +1,119 @@
+name: Server Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: GHCR image tag to deploy.
+        required: true
+        default: latest
+      run_backup:
+        description: Run the production backup script before deploying.
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/kopitarfan/all-of-me-server
+  HEALTH_URL: https://api.allofmeapp.com/healthz
+  SSH_PORT: 22
+
+jobs:
+  deploy:
+    name: Deploy to Vultr
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Validate image tag
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Image tag contains unsupported characters: $IMAGE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.ALLOFME_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SSH_HOST" ]; then
+            echo "ALLOFME_DEPLOY_HOST is not set." >&2
+            exit 1
+          fi
+
+          if [ -z "$SSH_USER" ]; then
+            echo "ALLOFME_DEPLOY_USER is not set." >&2
+            exit 1
+          fi
+
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "ALLOFME_DEPLOY_SSH_KEY is not set." >&2
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/allofme_deploy_key
+          chmod 600 ~/.ssh/allofme_deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run production backup
+        if: inputs.run_backup
+        env:
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/allofme_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            'sudo /usr/local/sbin/allofme-backup'
+
+      - name: Deploy image
+        env:
+          DEPLOY_IMAGE: ${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/allofme_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_IMAGE='$DEPLOY_IMAGE' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/allofme/app
+
+          if grep -q '^ALLOFME_SERVER_IMAGE=' .env.production; then
+            sudo sed -i "s|^ALLOFME_SERVER_IMAGE=.*|ALLOFME_SERVER_IMAGE=${DEPLOY_IMAGE}|" .env.production
+          else
+            echo "ALLOFME_SERVER_IMAGE=${DEPLOY_IMAGE}" | sudo tee -a .env.production >/dev/null
+          fi
+
+          sudo docker compose --env-file .env.production pull api
+          sudo docker compose --env-file .env.production up -d api
+          sudo docker compose --env-file .env.production ps
+          sudo docker image prune -f
+          REMOTE
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --retry 12 --retry-delay 5 "$HEALTH_URL"
