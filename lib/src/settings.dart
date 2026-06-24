@@ -395,9 +395,13 @@ class CloudSaveConnection {
 }
 
 class _CloudSaveConnectionDialog extends StatefulWidget {
-  const _CloudSaveConnectionDialog({this.initialSession});
+  const _CloudSaveConnectionDialog({
+    this.initialSession,
+    required this.registerDevice,
+  });
 
   final CloudSaveSession? initialSession;
+  final CloudSaveDeviceRegistrar registerDevice;
 
   @override
   State<_CloudSaveConnectionDialog> createState() =>
@@ -408,8 +412,10 @@ class _CloudSaveConnectionDialogState
     extends State<_CloudSaveConnectionDialog> {
   late final TextEditingController _baseUrlController;
   late final TextEditingController _accountLabelController;
+  late final TextEditingController _deviceLabelController;
   late final TextEditingController _accessTokenController;
   String? _errorText;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -421,6 +427,7 @@ class _CloudSaveConnectionDialogState
     _accountLabelController = TextEditingController(
       text: initialSession?.accountLabel ?? '',
     );
+    _deviceLabelController = TextEditingController(text: 'This device');
     _accessTokenController = TextEditingController();
   }
 
@@ -428,30 +435,61 @@ class _CloudSaveConnectionDialogState
   void dispose() {
     _baseUrlController.dispose();
     _accountLabelController.dispose();
+    _deviceLabelController.dispose();
     _accessTokenController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    late final CloudSaveSession session;
     try {
-      final session = CloudSaveSession.create(
+      session = CloudSaveSession.create(
         baseUrl: _baseUrlController.text,
         accountLabel: _accountLabelController.text,
       );
-      final accessToken = _accessTokenController.text.trim();
-      if (accessToken.isEmpty) {
-        setState(() {
-          _errorText = 'Enter an access token.';
-        });
-        return;
-      }
-      Navigator.of(
-        context,
-      ).pop(CloudSaveConnection(session: session, accessToken: accessToken));
     } catch (_) {
       setState(() {
         _errorText = 'Enter a valid http or https URL.';
       });
+      return;
+    }
+
+    final manualAccessToken = _accessTokenController.text.trim();
+    if (manualAccessToken.isNotEmpty) {
+      Navigator.of(context).pop(
+        CloudSaveConnection(session: session, accessToken: manualAccessToken),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    try {
+      final registration = await widget.registerDevice(
+        session,
+        deviceLabel: _nullableTrimmed(_deviceLabelController.text),
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(
+        CloudSaveConnection(session: session, accessToken: registration.token),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorText =
+              'Could not register this device. Check the server URL and try again.';
+        });
+      }
     }
   }
 
@@ -491,11 +529,20 @@ class _CloudSaveConnectionDialogState
             ),
             const SizedBox(height: 12),
             TextField(
+              controller: _deviceLabelController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Device label',
+                hintText: 'This device',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
               controller: _accessTokenController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Access token',
-                hintText: 'Stored securely on this device',
+                labelText: 'Access token (optional)',
+                hintText: 'Leave blank to register this device',
               ),
               onSubmitted: (_) => _submit(),
             ),
@@ -511,10 +558,18 @@ class _CloudSaveConnectionDialogState
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Connect')),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Connect'),
+        ),
       ],
     );
   }

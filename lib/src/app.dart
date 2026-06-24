@@ -1,5 +1,20 @@
 part of '../main.dart';
 
+typedef CloudSaveDeviceRegistrar =
+    Future<CloudSaveDeviceRegistration> Function(
+      CloudSaveSession session, {
+      String? deviceLabel,
+    });
+
+Future<CloudSaveDeviceRegistration> _defaultCloudSaveDeviceRegistrar(
+  CloudSaveSession session, {
+  String? deviceLabel,
+}) {
+  return RemoteCloudSaveAuthClient(
+    baseUrl: session.baseUri,
+  ).registerDevice(deviceLabel: deviceLabel);
+}
+
 class AllOfMeApp extends StatefulWidget {
   const AllOfMeApp({
     super.key,
@@ -7,6 +22,7 @@ class AllOfMeApp extends StatefulWidget {
     this.cloudSaveAdapter,
     this.cloudSaveSessionStore = const SharedPreferencesCloudSaveSessionStore(),
     this.cloudSaveTokenStore = const SecureCloudSaveTokenStore(),
+    this.cloudSaveDeviceRegistrar,
     this.cloudSavePayloadEncoder,
     this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
@@ -18,6 +34,7 @@ class AllOfMeApp extends StatefulWidget {
   final CloudSaveAdapter? cloudSaveAdapter;
   final CloudSaveSessionStore cloudSaveSessionStore;
   final CloudSaveTokenStore cloudSaveTokenStore;
+  final CloudSaveDeviceRegistrar? cloudSaveDeviceRegistrar;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -169,6 +186,8 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
         onCloudSaveDisconnect: _managesCloudSaveAdapter
             ? _disconnectCloudSave
             : null,
+        cloudSaveDeviceRegistrar:
+            widget.cloudSaveDeviceRegistrar ?? _defaultCloudSaveDeviceRegistrar,
         cloudSavePayloadEncoder: widget.cloudSavePayloadEncoder,
         cloudSavePayloadDecoder: widget.cloudSavePayloadDecoder,
         authenticator: widget.authenticator,

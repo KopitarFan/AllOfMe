@@ -8,6 +8,7 @@ class HomeScreen extends StatefulWidget {
     required this.cloudSaveSession,
     required this.onCloudSaveConnect,
     required this.onCloudSaveDisconnect,
+    required this.cloudSaveDeviceRegistrar,
     required this.cloudSavePayloadEncoder,
     required this.cloudSavePayloadDecoder,
     required this.authenticator,
@@ -24,6 +25,7 @@ class HomeScreen extends StatefulWidget {
   final Future<void> Function(CloudSaveConnection connection)?
   onCloudSaveConnect;
   final Future<void> Function()? onCloudSaveDisconnect;
+  final CloudSaveDeviceRegistrar cloudSaveDeviceRegistrar;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -945,8 +947,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final connection = await showDialog<CloudSaveConnection>(
       context: context,
-      builder: (context) =>
-          _CloudSaveConnectionDialog(initialSession: widget.cloudSaveSession),
+      builder: (context) => _CloudSaveConnectionDialog(
+        initialSession: widget.cloudSaveSession,
+        registerDevice: widget.cloudSaveDeviceRegistrar,
+      ),
     );
     if (connection == null) {
       return;

@@ -29,6 +29,98 @@ class StaticCloudSaveCredentialsProvider
   String? bearerToken() => _trimmedOrNull(token);
 }
 
+class CloudSaveDeviceRegistration {
+  const CloudSaveDeviceRegistration({
+    required this.accountId,
+    required this.deviceId,
+    required this.token,
+    required this.tokenType,
+    this.deviceLabel,
+  });
+
+  final String accountId;
+  final String deviceId;
+  final String token;
+  final String tokenType;
+  final String? deviceLabel;
+
+  factory CloudSaveDeviceRegistration.fromJson(Map<String, Object?> json) {
+    final accountId = json['accountId'];
+    final deviceId = json['deviceId'];
+    final token = json['token'];
+    final tokenType = json['tokenType'];
+    if (accountId is! String ||
+        accountId.trim().isEmpty ||
+        deviceId is! String ||
+        deviceId.trim().isEmpty ||
+        token is! String ||
+        token.trim().isEmpty ||
+        tokenType is! String ||
+        tokenType.trim().isEmpty) {
+      throw const CloudSaveRemoteException(
+        'Cloud save device registration response was invalid.',
+      );
+    }
+
+    return CloudSaveDeviceRegistration(
+      accountId: accountId,
+      deviceId: deviceId,
+      token: token,
+      tokenType: tokenType,
+      deviceLabel: _trimmedOrNull(json['deviceLabel'] as String?),
+    );
+  }
+}
+
+class RemoteCloudSaveAuthClient {
+  RemoteCloudSaveAuthClient({
+    required Uri baseUrl,
+    http.Client? client,
+    this.timeout = const Duration(seconds: 20),
+  }) : baseUrl = RemoteCloudSaveAdapter._normalizeBaseUrl(baseUrl),
+       _client = client ?? http.Client();
+
+  static const _registerDevicePath = 'v1/devices/register';
+
+  final Uri baseUrl;
+  final Duration timeout;
+  final http.Client _client;
+
+  Future<CloudSaveDeviceRegistration> registerDevice({
+    String? deviceLabel,
+  }) async {
+    final response = await _postJson(_registerDevicePath, {
+      if (_trimmedOrNull(deviceLabel) != null)
+        'deviceLabel': _trimmedOrNull(deviceLabel),
+    });
+    _ensureSuccess(response, action: 'register this device for cloud save');
+    return CloudSaveDeviceRegistration.fromJson(
+      _decodeObject(response, action: 'read device registration'),
+    );
+  }
+
+  Future<http.Response> _postJson(String path, Map<String, Object?> body) {
+    return _client
+        .post(
+          _resolve(path),
+          headers: const {
+            'accept': 'application/json',
+            'content-type': 'application/json; charset=utf-8',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(timeout, onTimeout: () => throw _timeoutException(path));
+  }
+
+  Uri _resolve(String path) => baseUrl.resolve(path);
+
+  CloudSaveRemoteException _timeoutException(String path) {
+    return CloudSaveRemoteException(
+      'Timed out contacting cloud save endpoint ${_resolve(path)}.',
+    );
+  }
+}
+
 class CloudSaveRemoteException implements Exception {
   const CloudSaveRemoteException(this.message, {this.statusCode});
 

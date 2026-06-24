@@ -95,6 +95,11 @@ String _initialFromName(String value) {
   return trimmed.isEmpty ? '?' : trimmed.characters.first;
 }
 
+String? _nullableTrimmed(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
 double _clampDouble(double value, double min, double max) {
   if (value < min) {
     return min;
