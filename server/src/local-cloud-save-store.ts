@@ -6,9 +6,13 @@ import Database from 'better-sqlite3';
 import {
   type AuthenticatedDevice,
   type AuthStore,
+  type DeviceLinkCode,
+  type DeviceRegistration,
   createAuthToken,
+  createDeviceLinkCode,
   createServerId,
-  hashAuthToken
+  hashAuthToken,
+  normalizeDeviceLinkCode
 } from './auth-store.js';
 import {
   type CloudSaveMetadata,
@@ -47,6 +51,14 @@ type DeviceRow = {
   account_id: string;
   device_id: string;
   device_label: string | null;
+};
+
+type DeviceLinkCodeRow = {
+  account_id: string;
+  created_by_device_id: string;
+  expires_at: string;
+  redeemed_at: string | null;
+  redeemed_by_device_id: string | null;
 };
 
 export async function createLocalCloudSaveStore(
@@ -100,6 +112,28 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
       CREATE INDEX IF NOT EXISTS idx_devices_account_id
         ON devices (account_id);
 
+      CREATE TABLE IF NOT EXISTS device_link_codes (
+        code_hash TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        created_by_device_id TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        redeemed_at TEXT,
+        redeemed_by_device_id TEXT,
+        FOREIGN KEY (account_id)
+          REFERENCES accounts(account_id)
+          ON DELETE CASCADE,
+        FOREIGN KEY (created_by_device_id)
+          REFERENCES devices(device_id)
+          ON DELETE CASCADE,
+        FOREIGN KEY (redeemed_by_device_id)
+          REFERENCES devices(device_id)
+          ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_device_link_codes_account_id
+        ON device_link_codes (account_id, expires_at);
+
       CREATE TABLE IF NOT EXISTS cloud_saves (
         account_id TEXT NOT NULL,
         save_id TEXT NOT NULL,
@@ -134,11 +168,13 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
 
   async registerDevice(options: {
     deviceLabel?: string;
-  }): Promise<AuthenticatedDevice & { token: string; tokenType: 'Bearer' }> {
+  }): Promise<DeviceRegistration> {
     const accountId = createServerId('account');
-    const deviceId = createServerId('device');
-    const token = createAuthToken();
     const now = new Date().toISOString();
+    const device = createLocalDeviceRegistration({
+      accountId,
+      deviceLabel: options.deviceLabel
+    });
 
     const createDevice = this.database.transaction(() => {
       this.database
@@ -157,25 +193,116 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
           `
         )
         .run(
-          deviceId,
+          device.deviceId,
           accountId,
           options.deviceLabel ?? null,
-          hashAuthToken(token),
+          hashAuthToken(device.token),
           now
         );
     });
 
     createDevice();
 
+    return device;
+  }
+
+  async createDeviceLinkCode(
+    device: AuthenticatedDevice,
+    options: { expiresAt: Date }
+  ): Promise<DeviceLinkCode> {
+    const linkCode = createDeviceLinkCode();
+    this.database
+      .prepare(
+        `
+          INSERT INTO device_link_codes (
+            code_hash,
+            account_id,
+            created_by_device_id,
+            expires_at,
+            created_at
+          ) VALUES (?, ?, ?, ?, ?)
+        `
+      )
+      .run(
+        hashAuthToken(normalizeDeviceLinkCode(linkCode)),
+        device.accountId,
+        device.deviceId,
+        options.expiresAt.toISOString(),
+        new Date().toISOString()
+      );
+
     return {
-      accountId,
-      deviceId,
-      ...(options.deviceLabel == null
-        ? {}
-        : { deviceLabel: options.deviceLabel }),
-      token,
-      tokenType: 'Bearer'
+      code: linkCode,
+      expiresAt: options.expiresAt.toISOString()
     };
+  }
+
+  async redeemDeviceLinkCode(options: {
+    code: string;
+    deviceLabel?: string;
+  }): Promise<DeviceRegistration | null> {
+    const codeHash = hashAuthToken(normalizeDeviceLinkCode(options.code));
+    const row = this.database
+      .prepare(
+        `
+          SELECT
+            account_id,
+            created_by_device_id,
+            expires_at,
+            redeemed_at,
+            redeemed_by_device_id
+          FROM device_link_codes
+          WHERE code_hash = ?
+        `
+      )
+      .get(codeHash) as DeviceLinkCodeRow | undefined;
+
+    if (
+      row == null ||
+      row.redeemed_at != null ||
+      Date.parse(row.expires_at) <= Date.now()
+    ) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const device = createLocalDeviceRegistration({
+      accountId: row.account_id,
+      deviceLabel: options.deviceLabel
+    });
+    const redeemCode = this.database.transaction(() => {
+      this.database
+        .prepare(
+          `
+            INSERT INTO devices (
+              device_id,
+              account_id,
+              device_label,
+              token_hash,
+              created_at
+            ) VALUES (?, ?, ?, ?, ?)
+          `
+        )
+        .run(
+          device.deviceId,
+          device.accountId,
+          options.deviceLabel ?? null,
+          hashAuthToken(device.token),
+          now
+        );
+      this.database
+        .prepare(
+          `
+            UPDATE device_link_codes
+            SET redeemed_at = ?, redeemed_by_device_id = ?
+            WHERE code_hash = ?
+          `
+        )
+        .run(now, device.deviceId, codeHash);
+    });
+
+    redeemCode();
+    return device;
   }
 
   async authenticateToken(token: string): Promise<AuthenticatedDevice | null> {
@@ -416,4 +543,20 @@ function metadataFromRow(row: CloudSaveRow): CloudSaveMetadata {
 
 function packageFileName(accountId: string, saveId: string): string {
   return `${encodeURIComponent(accountId)}/${encodeURIComponent(saveId)}.json`;
+}
+
+function createLocalDeviceRegistration(options: {
+  accountId: string;
+  deviceLabel?: string;
+}): DeviceRegistration {
+  const token = createAuthToken();
+  return {
+    accountId: options.accountId,
+    deviceId: createServerId('device'),
+    ...(options.deviceLabel == null
+      ? {}
+      : { deviceLabel: options.deviceLabel }),
+    token,
+    tokenType: 'Bearer'
+  };
 }

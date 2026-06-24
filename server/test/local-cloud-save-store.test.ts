@@ -99,6 +99,80 @@ describe('LocalCloudSaveStore', () => {
       await rm(dataDirectory, { force: true, recursive: true });
     }
   });
+
+  test('persists and redeems one-time device link codes', async () => {
+    const dataDirectory = await createTempDataDirectory();
+
+    try {
+      const firstStore = await createLocalCloudSaveStore({
+        dataDirectory,
+        maxVersions: 5
+      });
+      const owner = await firstStore.registerDevice({
+        deviceLabel: 'Miguel iPhone'
+      });
+      const linkCode = await firstStore.createDeviceLinkCode(owner, {
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+      });
+      firstStore.close();
+
+      const secondStore = await createLocalCloudSaveStore({
+        dataDirectory,
+        maxVersions: 5
+      });
+      try {
+        const linkedDevice = await secondStore.redeemDeviceLinkCode({
+          code: linkCode.code.toLowerCase(),
+          deviceLabel: 'Miguel iPad'
+        });
+        expect(linkedDevice).toMatchObject({
+          accountId: owner.accountId,
+          deviceLabel: 'Miguel iPad',
+          tokenType: 'Bearer'
+        });
+        expect(linkedDevice?.deviceId).not.toBe(owner.deviceId);
+        await expect(
+          secondStore.authenticateToken(linkedDevice!.token)
+        ).resolves.toMatchObject({
+          accountId: owner.accountId,
+          deviceId: linkedDevice!.deviceId,
+          deviceLabel: 'Miguel iPad'
+        });
+        await expect(
+          secondStore.redeemDeviceLinkCode({ code: linkCode.code })
+        ).resolves.toBeNull();
+      } finally {
+        secondStore.close();
+      }
+    } finally {
+      await rm(dataDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test('rejects expired device link codes', async () => {
+    const dataDirectory = await createTempDataDirectory();
+
+    try {
+      const store = await createLocalCloudSaveStore({
+        dataDirectory,
+        maxVersions: 5
+      });
+      try {
+        const owner = await store.registerDevice({});
+        const linkCode = await store.createDeviceLinkCode(owner, {
+          expiresAt: new Date(Date.now() - 1000)
+        });
+
+        await expect(
+          store.redeemDeviceLinkCode({ code: linkCode.code })
+        ).resolves.toBeNull();
+      } finally {
+        store.close();
+      }
+    } finally {
+      await rm(dataDirectory, { force: true, recursive: true });
+    }
+  });
 });
 
 function createTempDataDirectory(): Promise<string> {

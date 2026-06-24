@@ -26,6 +26,11 @@ const configSchema = z.object({
   CLOUD_SAVE_MAX_VERSIONS: z.coerce.number().int().positive().default(5),
   CLOUD_SAVE_STORE: z.enum(['local', 'memory']).optional(),
   CLOUD_SAVE_DATA_DIR: z.string().trim().min(1).default('.data/cloud-saves'),
+  DEVICE_LINK_CODE_TTL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 60 * 1000),
   TRUST_PROXY: stringBooleanSchema.optional(),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_TIME_WINDOW_MS: z.coerce
@@ -57,6 +62,7 @@ export type AppConfig = {
   cloudSaveMaxVersions: number;
   cloudSaveStore: 'local' | 'memory';
   cloudSaveDataDirectory: string;
+  deviceLinkCodeTtlMs: number;
   rateLimit: {
     max: number;
     timeWindowMs: number;
@@ -82,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       parsed.CLOUD_SAVE_STORE ??
       (parsed.NODE_ENV === 'test' ? 'memory' : 'local'),
     cloudSaveDataDirectory: parsed.CLOUD_SAVE_DATA_DIR,
+    deviceLinkCodeTtlMs: parsed.DEVICE_LINK_CODE_TTL_MS,
     rateLimit: {
       max: parsed.RATE_LIMIT_MAX,
       timeWindowMs: parsed.RATE_LIMIT_TIME_WINDOW_MS,
