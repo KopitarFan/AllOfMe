@@ -5,6 +5,30 @@ import 'package:http/http.dart' as http;
 
 import 'cloud_save.dart';
 
+abstract class CloudSaveCredentialsProvider {
+  const CloudSaveCredentialsProvider();
+
+  FutureOr<String?> bearerToken();
+}
+
+class EmptyCloudSaveCredentialsProvider
+    implements CloudSaveCredentialsProvider {
+  const EmptyCloudSaveCredentialsProvider();
+
+  @override
+  String? bearerToken() => null;
+}
+
+class StaticCloudSaveCredentialsProvider
+    implements CloudSaveCredentialsProvider {
+  const StaticCloudSaveCredentialsProvider(this.token);
+
+  final String? token;
+
+  @override
+  String? bearerToken() => _trimmedOrNull(token);
+}
+
 class CloudSaveRemoteException implements Exception {
   const CloudSaveRemoteException(this.message, {this.statusCode});
 
@@ -24,25 +48,29 @@ class CloudSaveRemoteException implements Exception {
 class RemoteCloudSaveAdapter implements CloudSaveAdapter {
   RemoteCloudSaveAdapter({
     required Uri baseUrl,
-    String? bearerToken,
+    this.accountLabel,
+    this.credentialsProvider = const EmptyCloudSaveCredentialsProvider(),
     http.Client? client,
     this.timeout = const Duration(seconds: 20),
   }) : baseUrl = _normalizeBaseUrl(baseUrl),
-       bearerToken = _trimmedOrNull(bearerToken),
        _client = client ?? http.Client();
 
   static const _cloudSavesPath = 'v1/cloud-saves';
 
   final Uri baseUrl;
-  final String? bearerToken;
+  final String? accountLabel;
+  final CloudSaveCredentialsProvider credentialsProvider;
   final Duration timeout;
   final http.Client _client;
 
   @override
   CloudSaveAdapterInfo get info => CloudSaveAdapterInfo(
-    label: 'Remote cloud save',
+    label: accountLabel == null
+        ? 'Remote cloud save'
+        : 'Cloud save for $accountLabel',
     location: baseUrl.toString(),
     isRemote: true,
+    accountLabel: accountLabel,
   );
 
   @override
@@ -110,22 +138,25 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
   }
 
   Future<http.Response> _get(String path) {
-    return _client
-        .get(_resolve(path), headers: _headers())
+    return _headers()
+        .then((headers) => _client.get(_resolve(path), headers: headers))
         .timeout(timeout, onTimeout: () => throw _timeoutException(path));
   }
 
   Future<http.Response> _postJson(String path, Map<String, Object?> body) {
-    return _client
-        .post(
-          _resolve(path),
-          headers: _headers(hasJsonBody: true),
-          body: jsonEncode(body),
+    return _headers(hasJsonBody: true)
+        .then(
+          (headers) => _client.post(
+            _resolve(path),
+            headers: headers,
+            body: jsonEncode(body),
+          ),
         )
         .timeout(timeout, onTimeout: () => throw _timeoutException(path));
   }
 
-  Map<String, String> _headers({bool hasJsonBody = false}) {
+  Future<Map<String, String>> _headers({bool hasJsonBody = false}) async {
+    final bearerToken = _trimmedOrNull(await credentialsProvider.bearerToken());
     return {
       'accept': 'application/json',
       if (hasJsonBody) 'content-type': 'application/json; charset=utf-8',
@@ -153,7 +184,13 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
     }
 
     final path = baseUrl.path.endsWith('/') ? baseUrl.path : '${baseUrl.path}/';
-    return baseUrl.replace(path: path, query: '', fragment: '');
+    return Uri(
+      scheme: scheme,
+      userInfo: baseUrl.userInfo,
+      host: baseUrl.host,
+      port: baseUrl.hasPort ? baseUrl.port : null,
+      path: path,
+    );
   }
 }
 

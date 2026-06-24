@@ -1,24 +1,63 @@
 import 'cloud_save.dart';
 import 'cloud_save_remote.dart';
+import 'cloud_save_session.dart';
 
 const String cloudSaveBaseUrlEnvironmentKey = 'ALLOFME_CLOUD_SAVE_BASE_URL';
-const String cloudSaveBearerTokenEnvironmentKey =
-    'ALLOFME_CLOUD_SAVE_BEARER_TOKEN';
+const String cloudSaveAccountLabelEnvironmentKey =
+    'ALLOFME_CLOUD_SAVE_ACCOUNT_LABEL';
+
+class CloudSaveSessionCredentialsProvider
+    implements CloudSaveCredentialsProvider {
+  const CloudSaveSessionCredentialsProvider(this.session);
+
+  final CloudSaveSession session;
+
+  @override
+  String? bearerToken() => session.accessToken;
+}
 
 CloudSaveAdapter createDefaultCloudSaveAdapter({
+  CloudSaveSession? session,
   String baseUrl = const String.fromEnvironment(cloudSaveBaseUrlEnvironmentKey),
-  String bearerToken = const String.fromEnvironment(
-    cloudSaveBearerTokenEnvironmentKey,
+  String accountLabel = const String.fromEnvironment(
+    cloudSaveAccountLabelEnvironmentKey,
   ),
 }) {
-  final trimmedBaseUrl = baseUrl.trim();
-  if (trimmedBaseUrl.isEmpty) {
+  return createCloudSaveAdapterForSession(
+    session ??
+        defaultCloudSaveSessionFromEnvironment(
+          baseUrl: baseUrl,
+          accountLabel: accountLabel,
+        ),
+  );
+}
+
+CloudSaveAdapter createCloudSaveAdapterForSession(CloudSaveSession? session) {
+  if (session == null) {
     return const SharedPreferencesCloudSaveAdapter();
   }
 
   return RemoteCloudSaveAdapter(
-    baseUrl: Uri.parse(trimmedBaseUrl),
-    bearerToken: _trimmedOrNull(bearerToken),
+    baseUrl: session.baseUri,
+    accountLabel: session.accountLabel,
+    credentialsProvider: CloudSaveSessionCredentialsProvider(session),
+  );
+}
+
+CloudSaveSession? defaultCloudSaveSessionFromEnvironment({
+  String baseUrl = const String.fromEnvironment(cloudSaveBaseUrlEnvironmentKey),
+  String accountLabel = const String.fromEnvironment(
+    cloudSaveAccountLabelEnvironmentKey,
+  ),
+}) {
+  final trimmedBaseUrl = baseUrl.trim();
+  if (trimmedBaseUrl.isEmpty) {
+    return null;
+  }
+
+  return CloudSaveSession.create(
+    baseUrl: trimmedBaseUrl,
+    accountLabel: _trimmedOrNull(accountLabel),
   );
 }
 

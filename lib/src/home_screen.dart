@@ -5,6 +5,9 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.cloudSaveAdapter,
+    required this.cloudSaveSession,
+    required this.onCloudSaveConnect,
+    required this.onCloudSaveDisconnect,
     required this.cloudSavePayloadEncoder,
     required this.cloudSavePayloadDecoder,
     required this.authenticator,
@@ -17,6 +20,9 @@ class HomeScreen extends StatefulWidget {
 
   final AppStore store;
   final CloudSaveAdapter cloudSaveAdapter;
+  final CloudSaveSession? cloudSaveSession;
+  final Future<void> Function(CloudSaveSession session)? onCloudSaveConnect;
+  final Future<void> Function()? onCloudSaveDisconnect;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -810,8 +816,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       final info = await widget.store.info();
       final lockStatus = await widget.authenticator.status();
-      final cloudSaveMetadata = await widget.cloudSaveAdapter.latestMetadata();
       final cloudSaveInfo = widget.cloudSaveAdapter.info;
+      CloudSaveMetadata? cloudSaveMetadata;
+      String? cloudSaveErrorMessage;
+      try {
+        cloudSaveMetadata = await widget.cloudSaveAdapter.latestMetadata();
+      } catch (_) {
+        cloudSaveErrorMessage = 'Remote unavailable';
+      }
       if (!mounted) {
         return;
       }
@@ -826,6 +838,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           storeInfo: info,
           cloudSaveInfo: cloudSaveInfo,
           cloudSaveMetadata: cloudSaveMetadata,
+          cloudSaveErrorMessage: cloudSaveErrorMessage,
+          canManageCloudSave: _canManageCloudSave,
           lockStatus: lockStatus,
           themeMode: widget.themeMode,
           themePalette: widget.themePalette,
@@ -850,6 +864,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         case _SettingsPrivacyAction.pasteBackupJson:
           await _pasteBackupJson();
           return;
+        case _SettingsPrivacyAction.connectCloudSave:
+          await _connectCloudSave();
+          return;
+        case _SettingsPrivacyAction.disconnectCloudSave:
+          await _disconnectCloudSave();
+          return;
         case _SettingsPrivacyAction.saveCloudSave:
           await _saveCloudSave();
           return;
@@ -864,6 +884,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             snapshot: snapshot,
             storeInfo: info,
             cloudSaveInfo: cloudSaveInfo,
+            cloudSaveErrorMessage: cloudSaveErrorMessage,
             cloudSaveMetadata: cloudSaveMetadata,
           );
           return;
@@ -891,10 +912,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  bool get _canManageCloudSave =>
+      widget.onCloudSaveConnect != null && widget.onCloudSaveDisconnect != null;
+
   Future<void> _showPrivacyStorageInfo({
     required AppSnapshot snapshot,
     required AppStoreInfo storeInfo,
     required CloudSaveAdapterInfo cloudSaveInfo,
+    required String? cloudSaveErrorMessage,
     required CloudSaveMetadata? cloudSaveMetadata,
   }) async {
     await Navigator.of(context).push(
@@ -904,10 +929,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           snapshot: snapshot,
           storeInfo: storeInfo,
           cloudSaveInfo: cloudSaveInfo,
+          cloudSaveErrorMessage: cloudSaveErrorMessage,
           cloudSaveMetadata: cloudSaveMetadata,
         ),
       ),
     );
+  }
+
+  Future<void> _connectCloudSave() async {
+    final onConnect = widget.onCloudSaveConnect;
+    if (onConnect == null) {
+      return;
+    }
+
+    final session = await showDialog<CloudSaveSession>(
+      context: context,
+      builder: (context) =>
+          _CloudSaveConnectionDialog(initialSession: widget.cloudSaveSession),
+    );
+    if (session == null) {
+      return;
+    }
+
+    await onConnect(session);
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cloud save connected to ${session.accountLabel}.'),
+      ),
+    );
+  }
+
+  Future<void> _disconnectCloudSave() async {
+    final onDisconnect = widget.onCloudSaveDisconnect;
+    if (onDisconnect == null) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const _ConfirmDisconnectCloudSaveDialog(),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    await onDisconnect();
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cloud save disconnected.')));
   }
 
   Future<void> _showBetaFeedback() async {

@@ -36,6 +36,8 @@ enum _SettingsPrivacyAction {
   createBackup,
   importBackupFile,
   pasteBackupJson,
+  connectCloudSave,
+  disconnectCloudSave,
   saveCloudSave,
   restoreCloudSave,
   openRecentlyDeleted,

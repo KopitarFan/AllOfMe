@@ -193,16 +193,19 @@ class CloudSaveAdapterInfo {
     required this.label,
     required this.location,
     required this.isRemote,
+    this.accountLabel,
   });
 
   const CloudSaveAdapterInfo.localPreview()
     : label = 'Local preview',
       location = 'This device',
-      isRemote = false;
+      isRemote = false,
+      accountLabel = null;
 
   final String label;
   final String location;
   final bool isRemote;
+  final String? accountLabel;
 }
 
 class MemoryCloudSaveAdapter implements CloudSaveAdapter {

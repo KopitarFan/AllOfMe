@@ -8,6 +8,8 @@ class _SettingsPrivacyDialog extends StatelessWidget {
     required this.storeInfo,
     required this.cloudSaveInfo,
     required this.cloudSaveMetadata,
+    required this.cloudSaveErrorMessage,
+    required this.canManageCloudSave,
     required this.lockStatus,
     required this.themeMode,
     required this.themePalette,
@@ -17,6 +19,8 @@ class _SettingsPrivacyDialog extends StatelessWidget {
   final AppStoreInfo storeInfo;
   final CloudSaveAdapterInfo cloudSaveInfo;
   final CloudSaveMetadata? cloudSaveMetadata;
+  final String? cloudSaveErrorMessage;
+  final bool canManageCloudSave;
   final AppLockStatus lockStatus;
   final ThemeMode themeMode;
   final AppThemePalette themePalette;
@@ -31,9 +35,10 @@ class _SettingsPrivacyDialog extends StatelessWidget {
         snapshot.archivedMembers.length +
         snapshot.archivedGroups.length +
         snapshot.deletedTimeline.length;
-    final cloudSaveTitle = cloudSaveInfo.isRemote
-        ? 'Cloud save'
-        : 'Cloud save preview';
+    final cloudSaveStatus = _cloudSaveStatusLabel(
+      cloudSaveInfo: cloudSaveInfo,
+      errorMessage: cloudSaveErrorMessage,
+    );
     final maxContentHeight = MediaQuery.sizeOf(context).height * 0.72;
 
     return AlertDialog(
@@ -124,7 +129,24 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   ).pop(_SettingsPrivacyAction.pasteBackupJson),
                 ),
                 const SizedBox(height: 18),
-                _SettingsSectionTitle(cloudSaveTitle),
+                const _SettingsSectionTitle('Cloud save'),
+                if (canManageCloudSave)
+                  _SettingsActionTile(
+                    icon: cloudSaveInfo.isRemote
+                        ? Icons.link_off_outlined
+                        : Icons.cloud_sync_outlined,
+                    title: cloudSaveInfo.isRemote
+                        ? 'Disconnect cloud save'
+                        : 'Connect cloud save',
+                    subtitle: cloudSaveInfo.isRemote
+                        ? '$cloudSaveStatus - ${cloudSaveInfo.accountLabel ?? cloudSaveInfo.location}'
+                        : 'Not connected - save and restore stay on this device.',
+                    onTap: () => Navigator.of(context).pop(
+                      cloudSaveInfo.isRemote
+                          ? _SettingsPrivacyAction.disconnectCloudSave
+                          : _SettingsPrivacyAction.connectCloudSave,
+                    ),
+                  ),
                 _SettingsActionTile(
                   icon: Icons.cloud_upload_outlined,
                   title: 'Save now',
@@ -139,9 +161,10 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   icon: Icons.cloud_download_outlined,
                   title: 'Restore cloud save',
                   subtitle: cloudSaveMetadata == null
-                      ? cloudSaveInfo.isRemote
-                            ? 'Save this device before restoring.'
-                            : 'Create a preview save before restoring.'
+                      ? cloudSaveErrorMessage ??
+                            (cloudSaveInfo.isRemote
+                                ? 'Save this device before restoring.'
+                                : 'Create a preview save before restoring.')
                       : 'Latest save: ${_formatDateTime(cloudSaveMetadata!.createdAt)}.',
                   onTap: cloudSaveMetadata == null
                       ? null
@@ -238,19 +261,22 @@ class _PrivacyStorageInfoScreen extends StatelessWidget {
     required this.snapshot,
     required this.storeInfo,
     required this.cloudSaveInfo,
+    required this.cloudSaveErrorMessage,
     required this.cloudSaveMetadata,
   });
 
   final AppSnapshot snapshot;
   final AppStoreInfo storeInfo;
   final CloudSaveAdapterInfo cloudSaveInfo;
+  final String? cloudSaveErrorMessage;
   final CloudSaveMetadata? cloudSaveMetadata;
 
   @override
   Widget build(BuildContext context) {
-    final cloudSaveTitle = cloudSaveInfo.isRemote
-        ? 'Cloud save'
-        : 'Cloud save preview';
+    final cloudSaveStatus = _cloudSaveStatusLabel(
+      cloudSaveInfo: cloudSaveInfo,
+      errorMessage: cloudSaveErrorMessage,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy & storage')),
       body: SafeArea(
@@ -302,24 +328,32 @@ class _PrivacyStorageInfoScreen extends StatelessWidget {
                     value: snapshot.schemaVersion.toString(),
                   ),
                   const SizedBox(height: 18),
-                  _SettingsSectionTitle(cloudSaveTitle),
+                  const _SettingsSectionTitle('Cloud save'),
                   _SettingsNotice(
-                    icon: cloudSaveInfo.isRemote
+                    icon: cloudSaveErrorMessage != null
+                        ? Icons.cloud_off_outlined
+                        : cloudSaveInfo.isRemote
                         ? Icons.cloud_done_outlined
                         : Icons.cloud_queue_outlined,
-                    title: cloudSaveInfo.isRemote
-                        ? 'Remote endpoint configured'
-                        : 'Preview only',
-                    message: cloudSaveInfo.isRemote
+                    title: cloudSaveStatus,
+                    message: cloudSaveErrorMessage != null
+                        ? 'The cloud-save endpoint could not be reached. Local data on this device is still available.'
+                        : cloudSaveInfo.isRemote
                         ? 'Cloud saves are encrypted with a recovery key before upload. This device remains the source of truth.'
                         : 'Cloud saves are encrypted with a recovery key and stored locally until a remote endpoint is configured.',
                   ),
                   _SafetyRow(label: 'Provider', value: cloudSaveInfo.label),
                   _SafetyRow(label: 'Location', value: cloudSaveInfo.location),
+                  if (cloudSaveInfo.accountLabel != null)
+                    _SafetyRow(
+                      label: 'Account',
+                      value: cloudSaveInfo.accountLabel!,
+                    ),
+                  _SafetyRow(label: 'Connection', value: cloudSaveStatus),
                   _SafetyRow(
-                    label: 'Status',
+                    label: 'Last save',
                     value: cloudSaveMetadata == null
-                        ? 'No cloud save yet'
+                        ? cloudSaveErrorMessage ?? 'No cloud save yet'
                         : 'Saved ${_formatDateTime(cloudSaveMetadata!.createdAt)}',
                   ),
                   if (cloudSaveMetadata != null) ...[
@@ -339,6 +373,160 @@ class _PrivacyStorageInfoScreen extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+String _cloudSaveStatusLabel({
+  required CloudSaveAdapterInfo cloudSaveInfo,
+  required String? errorMessage,
+}) {
+  if (errorMessage != null) {
+    return 'Remote unavailable';
+  }
+  return cloudSaveInfo.isRemote ? 'Connected' : 'Not connected';
+}
+
+class _CloudSaveConnectionDialog extends StatefulWidget {
+  const _CloudSaveConnectionDialog({this.initialSession});
+
+  final CloudSaveSession? initialSession;
+
+  @override
+  State<_CloudSaveConnectionDialog> createState() =>
+      _CloudSaveConnectionDialogState();
+}
+
+class _CloudSaveConnectionDialogState
+    extends State<_CloudSaveConnectionDialog> {
+  late final TextEditingController _baseUrlController;
+  late final TextEditingController _accountLabelController;
+  late final TextEditingController _accessTokenController;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialSession = widget.initialSession;
+    _baseUrlController = TextEditingController(
+      text: initialSession?.baseUrl ?? '',
+    );
+    _accountLabelController = TextEditingController(
+      text: initialSession?.accountLabel ?? '',
+    );
+    _accessTokenController = TextEditingController(
+      text: initialSession?.accessToken ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _baseUrlController.dispose();
+    _accountLabelController.dispose();
+    _accessTokenController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    try {
+      final session = CloudSaveSession.create(
+        baseUrl: _baseUrlController.text,
+        accountLabel: _accountLabelController.text,
+        accessToken: _accessTokenController.text,
+      );
+      Navigator.of(context).pop(session);
+    } catch (_) {
+      setState(() {
+        _errorText = 'Enter a valid http or https URL.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.cloud_sync_outlined),
+          SizedBox(width: 10),
+          Expanded(child: Text('Connect cloud save')),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _baseUrlController,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Server URL',
+                hintText: 'https://cloud.example.com/api/',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _accountLabelController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Account label',
+                hintText: 'Personal cloud save',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _accessTokenController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Access token',
+                hintText: 'Optional for local development',
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
+            if (_errorText != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorText!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Connect')),
+      ],
+    );
+  }
+}
+
+class _ConfirmDisconnectCloudSaveDialog extends StatelessWidget {
+  const _ConfirmDisconnectCloudSaveDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Disconnect cloud save?'),
+      content: const Text(
+        'This removes the cloud-save connection from this device. Local data stays on this device.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Disconnect'),
+        ),
+      ],
     );
   }
 }

@@ -4,7 +4,8 @@ class AllOfMeApp extends StatefulWidget {
   const AllOfMeApp({
     super.key,
     required this.store,
-    this.cloudSaveAdapter = const SharedPreferencesCloudSaveAdapter(),
+    this.cloudSaveAdapter,
+    this.cloudSaveSessionStore = const SharedPreferencesCloudSaveSessionStore(),
     this.cloudSavePayloadEncoder,
     this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
@@ -13,7 +14,8 @@ class AllOfMeApp extends StatefulWidget {
   });
 
   final AppStore store;
-  final CloudSaveAdapter cloudSaveAdapter;
+  final CloudSaveAdapter? cloudSaveAdapter;
+  final CloudSaveSessionStore cloudSaveSessionStore;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -27,13 +29,39 @@ class AllOfMeApp extends StatefulWidget {
 class _AllOfMeAppState extends State<AllOfMeApp> {
   late ThemeMode _themeMode;
   late AppThemePalette _themePalette;
+  late CloudSaveAdapter _cloudSaveAdapter;
+  CloudSaveSession? _cloudSaveSession;
+
+  bool get _managesCloudSaveAdapter => widget.cloudSaveAdapter == null;
 
   @override
   void initState() {
     super.initState();
     _themeMode = widget.initialThemeMode;
     _themePalette = widget.initialThemePalette;
+    _cloudSaveSession = _managesCloudSaveAdapter
+        ? defaultCloudSaveSessionFromEnvironment()
+        : null;
+    _cloudSaveAdapter =
+        widget.cloudSaveAdapter ??
+        createCloudSaveAdapterForSession(_cloudSaveSession);
     _loadThemePreferences();
+    _loadCloudSaveSession();
+  }
+
+  Future<void> _loadCloudSaveSession() async {
+    if (!_managesCloudSaveAdapter) {
+      return;
+    }
+    final storedSession = await widget.cloudSaveSessionStore.load();
+    final session = storedSession ?? defaultCloudSaveSessionFromEnvironment();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cloudSaveSession = session;
+      _cloudSaveAdapter = createCloudSaveAdapterForSession(session);
+    });
   }
 
   Future<void> _loadThemePreferences() async {
@@ -84,6 +112,34 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
     await preferences.setString(_themePalettePreferenceKey, palette.id);
   }
 
+  Future<void> _connectCloudSave(CloudSaveSession session) async {
+    if (!_managesCloudSaveAdapter) {
+      return;
+    }
+    await widget.cloudSaveSessionStore.save(session);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cloudSaveSession = session;
+      _cloudSaveAdapter = createCloudSaveAdapterForSession(session);
+    });
+  }
+
+  Future<void> _disconnectCloudSave() async {
+    if (!_managesCloudSaveAdapter) {
+      return;
+    }
+    await widget.cloudSaveSessionStore.clear();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cloudSaveSession = null;
+      _cloudSaveAdapter = createCloudSaveAdapterForSession(null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -94,7 +150,12 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
       themeMode: _themeMode,
       home: HomeScreen(
         store: widget.store,
-        cloudSaveAdapter: widget.cloudSaveAdapter,
+        cloudSaveAdapter: _cloudSaveAdapter,
+        cloudSaveSession: _cloudSaveSession,
+        onCloudSaveConnect: _managesCloudSaveAdapter ? _connectCloudSave : null,
+        onCloudSaveDisconnect: _managesCloudSaveAdapter
+            ? _disconnectCloudSave
+            : null,
         cloudSavePayloadEncoder: widget.cloudSavePayloadEncoder,
         cloudSavePayloadDecoder: widget.cloudSavePayloadDecoder,
         authenticator: widget.authenticator,

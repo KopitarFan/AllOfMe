@@ -1,5 +1,7 @@
 import 'package:all_of_me_demo/app_lock.dart';
 import 'package:all_of_me_demo/cloud_save.dart';
+import 'package:all_of_me_demo/cloud_save_remote.dart';
+import 'package:all_of_me_demo/cloud_save_session.dart';
 import 'package:all_of_me_demo/main.dart';
 import 'package:all_of_me_demo/models.dart';
 import 'package:all_of_me_demo/storage.dart';
@@ -127,6 +129,7 @@ void main() {
     AppSnapshot? snapshot,
     AppStore? store,
     CloudSaveAdapter? cloudSaveAdapter,
+    CloudSaveSessionStore? cloudSaveSessionStore,
     CloudSavePayloadEncoder? cloudSavePayloadEncoder,
     CloudSavePayloadDecoder? cloudSavePayloadDecoder,
     AppAuthenticator? authenticator,
@@ -139,7 +142,9 @@ void main() {
     await tester.pumpWidget(
       AllOfMeApp(
         store: store ?? MemoryAppStore(snapshot ?? AppSnapshot.seeded()),
-        cloudSaveAdapter: cloudSaveAdapter ?? MemoryCloudSaveAdapter(),
+        cloudSaveAdapter: cloudSaveAdapter,
+        cloudSaveSessionStore:
+            cloudSaveSessionStore ?? MemoryCloudSaveSessionStore(),
         cloudSavePayloadEncoder:
             cloudSavePayloadEncoder ?? const CloudSavePlaintextPayloadEncoder(),
         cloudSavePayloadDecoder: cloudSavePayloadDecoder,
@@ -258,7 +263,12 @@ void main() {
     expect(find.text('Export backup'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
-    expect(find.text('Cloud save preview'), findsOneWidget);
+    expect(find.text('Cloud save'), findsOneWidget);
+    expect(find.text('Connect cloud save'), findsOneWidget);
+    expect(
+      find.text('Not connected - save and restore stay on this device.'),
+      findsOneWidget,
+    );
     expect(
       find.text('Create a preview save before restoring.'),
       findsOneWidget,
@@ -285,9 +295,86 @@ void main() {
     expect(find.text('In-memory'), findsOneWidget);
     expect(find.text('Records'), findsOneWidget);
     expect(find.text('Schema'), findsWidgets);
-    expect(find.text('Cloud save preview'), findsOneWidget);
-    expect(find.text('Preview only'), findsOneWidget);
+    expect(find.text('Cloud save'), findsOneWidget);
+    expect(find.text('Not connected'), findsWidgets);
     expect(find.text('No cloud save yet'), findsOneWidget);
+  });
+
+  testWidgets('connects and disconnects cloud save from settings', (
+    tester,
+  ) async {
+    final sessionStore = MemoryCloudSaveSessionStore();
+    await pumpApp(tester, cloudSaveSessionStore: sessionStore);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Connect cloud save');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server URL'),
+      'https://cloud.example.test/api',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Account label'),
+      'Test cloud',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Access token'),
+      'dev-token',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.pumpAndSettle();
+
+    final connectedSession = await sessionStore.load();
+    expect(connectedSession?.baseUrl, 'https://cloud.example.test/api/');
+    expect(connectedSession?.accountLabel, 'Test cloud');
+    expect(connectedSession?.accessToken, 'dev-token');
+    expect(find.text('Cloud save connected to Test cloud.'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Disconnect cloud save'), findsOneWidget);
+
+    await tapSettingsTile(tester, 'Disconnect cloud save');
+    await tester.pumpAndSettle();
+    expect(find.text('Disconnect cloud save?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
+    await tester.pumpAndSettle();
+
+    expect(await sessionStore.load(), isNull);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect cloud save'), findsOneWidget);
+  });
+
+  testWidgets('shows remote unavailable without blocking local data', (
+    tester,
+  ) async {
+    await pumpApp(tester, cloudSaveAdapter: _UnavailableCloudSaveAdapter());
+
+    expect(find.text(appDisplayName), findsWidgets);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cloud save'), findsOneWidget);
+    expect(find.text('Remote unavailable'), findsWidgets);
+    expect(find.text('Restore cloud save'), findsOneWidget);
+
+    await tapSettingsTile(tester, 'Privacy & storage');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remote unavailable'), findsWidgets);
+    expect(
+      find.text(
+        'The cloud-save endpoint could not be reached. Local data on this device is still available.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows beta feedback support details', (tester) async {
@@ -1153,6 +1240,36 @@ class _ReversingCloudSavePayloadEncoder implements CloudSavePayloadEncoder {
 
 List<int> _reverseCloudSavePayload(CloudSavePayload _, List<int> payloadBytes) {
   return payloadBytes.reversed.toList();
+}
+
+class _UnavailableCloudSaveAdapter implements CloudSaveAdapter {
+  @override
+  CloudSaveAdapterInfo get info => const CloudSaveAdapterInfo(
+    label: 'Remote cloud save',
+    location: 'https://cloud.example.test/api/',
+    isRemote: true,
+    accountLabel: 'Test cloud',
+  );
+
+  @override
+  Future<CloudSaveMetadata?> latestMetadata() async {
+    throw const CloudSaveRemoteException('offline');
+  }
+
+  @override
+  Future<CloudSavePackage?> downloadLatest() async {
+    throw const CloudSaveRemoteException('offline');
+  }
+
+  @override
+  Future<List<CloudSaveMetadata>> listVersions() async {
+    throw const CloudSaveRemoteException('offline');
+  }
+
+  @override
+  Future<CloudSaveMetadata> saveNow(CloudSavePackage package) async {
+    throw const CloudSaveRemoteException('offline');
+  }
 }
 
 class FakeAppAuthenticator implements AppAuthenticator {

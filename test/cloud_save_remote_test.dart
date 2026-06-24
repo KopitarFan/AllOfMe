@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:all_of_me_demo/cloud_save.dart';
 import 'package:all_of_me_demo/cloud_save_factory.dart';
 import 'package:all_of_me_demo/cloud_save_remote.dart';
+import 'package:all_of_me_demo/cloud_save_session.dart';
 import 'package:all_of_me_demo/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -25,19 +26,25 @@ void main() {
     );
 
     final adapter = createDefaultCloudSaveAdapter(
-      baseUrl: 'https://cloud.example.test/api',
-      bearerToken: ' token ',
+      session: CloudSaveSession.create(
+        baseUrl: 'https://cloud.example.test/api',
+        accountLabel: 'Test account',
+        accessToken: ' token ',
+      ),
     );
 
     expect(adapter, isA<RemoteCloudSaveAdapter>());
     expect(adapter.info.isRemote, isTrue);
+    expect(adapter.info.accountLabel, 'Test account');
   });
 
   test('remote adapter posts packages with JSON and bearer auth', () async {
     final cloudPackage = await package();
     final adapter = RemoteCloudSaveAdapter(
       baseUrl: Uri.parse('https://cloud.example.test/api'),
-      bearerToken: 'test-token',
+      credentialsProvider: const StaticCloudSaveCredentialsProvider(
+        'test-token',
+      ),
       client: MockClient((request) async {
         expect(request.method, 'POST');
         expect(
