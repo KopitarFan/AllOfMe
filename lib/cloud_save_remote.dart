@@ -55,7 +55,7 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
   }) : baseUrl = _normalizeBaseUrl(baseUrl),
        _client = client ?? http.Client();
 
-  static const _cloudSavesPath = 'v1/cloud-saves';
+  static const _savesPath = 'v1/saves';
 
   final Uri baseUrl;
   final String? accountLabel;
@@ -75,7 +75,7 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
 
   @override
   Future<CloudSaveMetadata> saveNow(CloudSavePackage package) async {
-    final response = await _postJson(_cloudSavesPath, package.toJson());
+    final response = await _postJson(_savesPath, package.toJson());
     _ensureSuccess(response, action: 'save cloud save');
     if (response.body.trim().isEmpty) {
       return package.metadata;
@@ -87,19 +87,13 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
 
   @override
   Future<CloudSaveMetadata?> latestMetadata() async {
-    final response = await _get('$_cloudSavesPath/latest/metadata');
-    if (response.statusCode == 404) {
-      return null;
-    }
-    _ensureSuccess(response, action: 'load latest cloud save metadata');
-    return CloudSaveMetadata.fromJson(
-      _metadataMap(_decodeObject(response, action: 'read latest metadata')),
-    );
+    final versions = await listVersions();
+    return versions.isEmpty ? null : versions.first;
   }
 
   @override
   Future<CloudSavePackage?> downloadLatest() async {
-    final response = await _get('$_cloudSavesPath/latest');
+    final response = await _get('$_savesPath/latest');
     if (response.statusCode == 404) {
       return null;
     }
@@ -111,7 +105,7 @@ class RemoteCloudSaveAdapter implements CloudSaveAdapter {
 
   @override
   Future<List<CloudSaveMetadata>> listVersions() async {
-    final response = await _get(_cloudSavesPath);
+    final response = await _get(_savesPath);
     if (response.statusCode == 404) {
       return const [];
     }
