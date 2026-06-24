@@ -49,7 +49,7 @@ void main() {
         expect(request.method, 'POST');
         expect(
           request.url.toString(),
-          'https://cloud.example.test/api/v1/cloud-saves',
+          'https://cloud.example.test/api/v1/saves',
         );
         expect(request.headers['authorization'], 'Bearer test-token');
         expect(
@@ -77,19 +77,14 @@ void main() {
       baseUrl: Uri.parse('https://cloud.example.test/api/'),
       client: MockClient((request) async {
         final path = request.url.path;
-        if (path == '/api/v1/cloud-saves/latest/metadata') {
-          return http.Response(jsonEncode(cloudPackage.metadata.toJson()), 200);
-        }
-        if (path == '/api/v1/cloud-saves/latest') {
-          return http.Response(jsonEncode(cloudPackage.toJson()), 200);
-        }
-        if (path == '/api/v1/cloud-saves') {
+        if (path == '/api/v1/saves') {
           return http.Response(
-            jsonEncode({
-              'versions': [cloudPackage.metadata.toJson()],
-            }),
+            jsonEncode([cloudPackage.metadata.toJson()]),
             200,
           );
+        }
+        if (path == '/api/v1/saves/latest') {
+          return http.Response(jsonEncode(cloudPackage.toJson()), 200);
         }
         return http.Response('not found', 404);
       }),
@@ -106,7 +101,12 @@ void main() {
   test('remote adapter treats missing latest save as empty', () async {
     final adapter = RemoteCloudSaveAdapter(
       baseUrl: Uri.parse('https://cloud.example.test'),
-      client: MockClient((request) async => http.Response('not found', 404)),
+      client: MockClient((request) async {
+        if (request.url.path == '/v1/saves') {
+          return http.Response('[]', 200);
+        }
+        return http.Response('not found', 404);
+      }),
     );
 
     expect(await adapter.latestMetadata(), isNull);
