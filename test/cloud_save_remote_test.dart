@@ -38,6 +38,45 @@ void main() {
     expect(adapter.info.accountLabel, 'Test account');
   });
 
+  test('auth client registers devices and parses bearer tokens', () async {
+    final client = RemoteCloudSaveAuthClient(
+      baseUrl: Uri.parse('https://cloud.example.test/api'),
+      client: MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(
+          request.url.toString(),
+          'https://cloud.example.test/api/v1/devices/register',
+        );
+        expect(
+          request.headers['content-type'],
+          'application/json; charset=utf-8',
+        );
+        expect(jsonDecode(request.body), {'deviceLabel': 'Miguel iPhone'});
+
+        return http.Response(
+          jsonEncode({
+            'accountId': 'account-test',
+            'deviceId': 'device-test',
+            'deviceLabel': 'Miguel iPhone',
+            'token': 'registered-token',
+            'tokenType': 'Bearer',
+          }),
+          201,
+        );
+      }),
+    );
+
+    final registration = await client.registerDevice(
+      deviceLabel: ' Miguel iPhone ',
+    );
+
+    expect(registration.accountId, 'account-test');
+    expect(registration.deviceId, 'device-test');
+    expect(registration.deviceLabel, 'Miguel iPhone');
+    expect(registration.token, 'registered-token');
+    expect(registration.tokenType, 'Bearer');
+  });
+
   test('remote adapter posts packages with JSON and bearer auth', () async {
     final cloudPackage = await package();
     final adapter = RemoteCloudSaveAdapter(

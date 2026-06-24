@@ -131,6 +131,7 @@ void main() {
     CloudSaveAdapter? cloudSaveAdapter,
     CloudSaveSessionStore? cloudSaveSessionStore,
     CloudSaveTokenStore? cloudSaveTokenStore,
+    CloudSaveDeviceRegistrar? cloudSaveDeviceRegistrar,
     CloudSavePayloadEncoder? cloudSavePayloadEncoder,
     CloudSavePayloadDecoder? cloudSavePayloadDecoder,
     AppAuthenticator? authenticator,
@@ -147,6 +148,7 @@ void main() {
         cloudSaveSessionStore:
             cloudSaveSessionStore ?? MemoryCloudSaveSessionStore(),
         cloudSaveTokenStore: cloudSaveTokenStore ?? MemoryCloudSaveTokenStore(),
+        cloudSaveDeviceRegistrar: cloudSaveDeviceRegistrar,
         cloudSavePayloadEncoder:
             cloudSavePayloadEncoder ?? const CloudSavePlaintextPayloadEncoder(),
         cloudSavePayloadDecoder: cloudSavePayloadDecoder,
@@ -327,7 +329,7 @@ void main() {
       'Test cloud',
     );
     await tester.enterText(
-      find.widgetWithText(TextField, 'Access token'),
+      find.widgetWithText(TextField, 'Access token (optional)'),
       'dev-token',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
@@ -358,6 +360,58 @@ void main() {
     await tester.tap(find.byTooltip('Settings and privacy'));
     await tester.pumpAndSettle();
     expect(find.text('Connect cloud save'), findsOneWidget);
+  });
+
+  testWidgets('registers cloud save device when token is blank', (
+    tester,
+  ) async {
+    final sessionStore = MemoryCloudSaveSessionStore();
+    final tokenStore = MemoryCloudSaveTokenStore();
+    CloudSaveSession? registeredSession;
+    String? registeredDeviceLabel;
+
+    await pumpApp(
+      tester,
+      cloudSaveSessionStore: sessionStore,
+      cloudSaveTokenStore: tokenStore,
+      cloudSaveDeviceRegistrar: (session, {deviceLabel}) async {
+        registeredSession = session;
+        registeredDeviceLabel = deviceLabel;
+        return const CloudSaveDeviceRegistration(
+          accountId: 'account-test',
+          deviceId: 'device-test',
+          deviceLabel: 'Miguel iPhone',
+          token: 'registered-token',
+          tokenType: 'Bearer',
+        );
+      },
+    );
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Connect cloud save');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server URL'),
+      'https://cloud.example.test/api',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Account label'),
+      'Test cloud',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Device label'),
+      'Miguel iPhone',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.pumpAndSettle();
+
+    expect(registeredSession?.baseUrl, 'https://cloud.example.test/api/');
+    expect(registeredDeviceLabel, 'Miguel iPhone');
+    expect((await sessionStore.load())?.accountLabel, 'Test cloud');
+    expect(await tokenStore.load(), 'registered-token');
+    expect(find.text('Cloud save connected to Test cloud.'), findsOneWidget);
   });
 
   testWidgets('shows remote unavailable without blocking local data', (
