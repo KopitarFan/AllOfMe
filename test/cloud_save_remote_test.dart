@@ -77,6 +77,60 @@ void main() {
     expect(registration.tokenType, 'Bearer');
   });
 
+  test('auth client creates and redeems device link codes', () async {
+    final client = RemoteCloudSaveAuthClient(
+      baseUrl: Uri.parse('https://cloud.example.test/api'),
+      client: MockClient((request) async {
+        final path = request.url.path;
+        if (path == '/api/v1/devices/link-codes') {
+          expect(request.method, 'POST');
+          expect(request.headers['authorization'], 'Bearer owner-token');
+          expect(jsonDecode(request.body), isEmpty);
+          return http.Response(
+            jsonEncode({
+              'code': 'AOM-12345-ABCDE',
+              'expiresAt': '2026-06-24T12:10:00.000Z',
+            }),
+            201,
+          );
+        }
+        if (path == '/api/v1/devices/link') {
+          expect(request.method, 'POST');
+          expect(jsonDecode(request.body), {
+            'code': 'aom-12345-abcde',
+            'deviceLabel': 'Miguel iPad',
+          });
+          return http.Response(
+            jsonEncode({
+              'accountId': 'account-test',
+              'deviceId': 'device-linked',
+              'deviceLabel': 'Miguel iPad',
+              'token': 'linked-token',
+              'tokenType': 'Bearer',
+            }),
+            201,
+          );
+        }
+        return http.Response('not found', 404);
+      }),
+    );
+
+    final linkCode = await client.createDeviceLinkCode(
+      accessToken: ' owner-token ',
+    );
+    final registration = await client.redeemDeviceLinkCode(
+      code: 'aom-12345-abcde',
+      deviceLabel: ' Miguel iPad ',
+    );
+
+    expect(linkCode.code, 'AOM-12345-ABCDE');
+    expect(linkCode.expiresAt, DateTime.parse('2026-06-24T12:10:00.000Z'));
+    expect(registration.accountId, 'account-test');
+    expect(registration.deviceId, 'device-linked');
+    expect(registration.deviceLabel, 'Miguel iPad');
+    expect(registration.token, 'linked-token');
+  });
+
   test('remote adapter posts packages with JSON and bearer auth', () async {
     final cloudPackage = await package();
     final adapter = RemoteCloudSaveAdapter(

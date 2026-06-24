@@ -9,6 +9,8 @@ class HomeScreen extends StatefulWidget {
     required this.onCloudSaveConnect,
     required this.onCloudSaveDisconnect,
     required this.cloudSaveDeviceRegistrar,
+    required this.cloudSaveDeviceLinkCodeCreator,
+    required this.cloudSaveDeviceLinkRedeemer,
     required this.cloudSavePayloadEncoder,
     required this.cloudSavePayloadDecoder,
     required this.authenticator,
@@ -26,6 +28,8 @@ class HomeScreen extends StatefulWidget {
   onCloudSaveConnect;
   final Future<void> Function()? onCloudSaveDisconnect;
   final CloudSaveDeviceRegistrar cloudSaveDeviceRegistrar;
+  final CloudSaveDeviceLinkCodeCreator cloudSaveDeviceLinkCodeCreator;
+  final CloudSaveDeviceLinkRedeemer cloudSaveDeviceLinkRedeemer;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -870,6 +874,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         case _SettingsPrivacyAction.connectCloudSave:
           await _connectCloudSave();
           return;
+        case _SettingsPrivacyAction.showCloudSaveLinkCode:
+          await _showCloudSaveLinkCode();
+          return;
         case _SettingsPrivacyAction.disconnectCloudSave:
           await _disconnectCloudSave();
           return;
@@ -950,6 +957,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (context) => _CloudSaveConnectionDialog(
         initialSession: widget.cloudSaveSession,
         registerDevice: widget.cloudSaveDeviceRegistrar,
+        redeemDeviceLinkCode: widget.cloudSaveDeviceLinkRedeemer,
       ),
     );
     if (connection == null) {
@@ -967,6 +975,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  Future<void> _showCloudSaveLinkCode() async {
+    final session = widget.cloudSaveSession;
+    if (session == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connect cloud save first.')),
+      );
+      return;
+    }
+
+    try {
+      final linkCode = await widget.cloudSaveDeviceLinkCodeCreator(session);
+      if (!mounted) {
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _CloudSaveDeviceLinkCodeDialog(linkCode),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not create a device link code.')),
+      );
+    }
   }
 
   Future<void> _disconnectCloudSave() async {

@@ -6,6 +6,16 @@ typedef CloudSaveDeviceRegistrar =
       String? deviceLabel,
     });
 
+typedef CloudSaveDeviceLinkCodeCreator =
+    Future<CloudSaveDeviceLinkCode> Function(CloudSaveSession session);
+
+typedef CloudSaveDeviceLinkRedeemer =
+    Future<CloudSaveDeviceRegistration> Function(
+      CloudSaveSession session, {
+      required String code,
+      String? deviceLabel,
+    });
+
 Future<CloudSaveDeviceRegistration> _defaultCloudSaveDeviceRegistrar(
   CloudSaveSession session, {
   String? deviceLabel,
@@ -23,6 +33,8 @@ class AllOfMeApp extends StatefulWidget {
     this.cloudSaveSessionStore = const SharedPreferencesCloudSaveSessionStore(),
     this.cloudSaveTokenStore = const SecureCloudSaveTokenStore(),
     this.cloudSaveDeviceRegistrar,
+    this.cloudSaveDeviceLinkCodeCreator,
+    this.cloudSaveDeviceLinkRedeemer,
     this.cloudSavePayloadEncoder,
     this.cloudSavePayloadDecoder,
     this.authenticator = const LocalAppAuthenticator(),
@@ -35,6 +47,8 @@ class AllOfMeApp extends StatefulWidget {
   final CloudSaveSessionStore cloudSaveSessionStore;
   final CloudSaveTokenStore cloudSaveTokenStore;
   final CloudSaveDeviceRegistrar? cloudSaveDeviceRegistrar;
+  final CloudSaveDeviceLinkCodeCreator? cloudSaveDeviceLinkCodeCreator;
+  final CloudSaveDeviceLinkRedeemer? cloudSaveDeviceLinkRedeemer;
   final CloudSavePayloadEncoder? cloudSavePayloadEncoder;
   final CloudSavePayloadDecoder? cloudSavePayloadDecoder;
   final AppAuthenticator authenticator;
@@ -170,6 +184,31 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
     });
   }
 
+  Future<CloudSaveDeviceLinkCode> _createCloudSaveDeviceLinkCode(
+    CloudSaveSession session,
+  ) async {
+    final accessToken = await widget.cloudSaveTokenStore.load();
+    if (accessToken == null || accessToken.trim().isEmpty) {
+      throw const CloudSaveRemoteException(
+        'Cloud save credentials are missing on this device.',
+      );
+    }
+
+    return RemoteCloudSaveAuthClient(
+      baseUrl: session.baseUri,
+    ).createDeviceLinkCode(accessToken: accessToken);
+  }
+
+  Future<CloudSaveDeviceRegistration> _redeemCloudSaveDeviceLinkCode(
+    CloudSaveSession session, {
+    required String code,
+    String? deviceLabel,
+  }) {
+    return RemoteCloudSaveAuthClient(
+      baseUrl: session.baseUri,
+    ).redeemDeviceLinkCode(code: code, deviceLabel: deviceLabel);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -188,6 +227,12 @@ class _AllOfMeAppState extends State<AllOfMeApp> {
             : null,
         cloudSaveDeviceRegistrar:
             widget.cloudSaveDeviceRegistrar ?? _defaultCloudSaveDeviceRegistrar,
+        cloudSaveDeviceLinkCodeCreator:
+            widget.cloudSaveDeviceLinkCodeCreator ??
+            _createCloudSaveDeviceLinkCode,
+        cloudSaveDeviceLinkRedeemer:
+            widget.cloudSaveDeviceLinkRedeemer ??
+            _redeemCloudSaveDeviceLinkCode,
         cloudSavePayloadEncoder: widget.cloudSavePayloadEncoder,
         cloudSavePayloadDecoder: widget.cloudSavePayloadDecoder,
         authenticator: widget.authenticator,
