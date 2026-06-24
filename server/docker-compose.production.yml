@@ -4,7 +4,7 @@ services:
     container_name: allofme-server
     restart: unless-stopped
     ports:
-      - "${ALLOFME_SERVER_PORT:-3000}:3000"
+      - "127.0.0.1:${ALLOFME_SERVER_PORT:-3000}:3000"
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
