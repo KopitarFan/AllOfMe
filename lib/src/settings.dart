@@ -6,6 +6,7 @@ class _SettingsPrivacyDialog extends StatelessWidget {
   const _SettingsPrivacyDialog({
     required this.snapshot,
     required this.storeInfo,
+    required this.cloudSaveInfo,
     required this.cloudSaveMetadata,
     required this.lockStatus,
     required this.themeMode,
@@ -14,6 +15,7 @@ class _SettingsPrivacyDialog extends StatelessWidget {
 
   final AppSnapshot snapshot;
   final AppStoreInfo storeInfo;
+  final CloudSaveAdapterInfo cloudSaveInfo;
   final CloudSaveMetadata? cloudSaveMetadata;
   final AppLockStatus lockStatus;
   final ThemeMode themeMode;
@@ -29,6 +31,9 @@ class _SettingsPrivacyDialog extends StatelessWidget {
         snapshot.archivedMembers.length +
         snapshot.archivedGroups.length +
         snapshot.deletedTimeline.length;
+    final cloudSaveTitle = cloudSaveInfo.isRemote
+        ? 'Cloud save'
+        : 'Cloud save preview';
     final maxContentHeight = MediaQuery.sizeOf(context).height * 0.72;
 
     return AlertDialog(
@@ -119,12 +124,13 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   ).pop(_SettingsPrivacyAction.pasteBackupJson),
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Cloud save preview'),
+                _SettingsSectionTitle(cloudSaveTitle),
                 _SettingsActionTile(
                   icon: Icons.cloud_upload_outlined,
                   title: 'Save now',
-                  subtitle:
-                      'Encrypt and create a local mock cloud save from this device.',
+                  subtitle: cloudSaveInfo.isRemote
+                      ? 'Encrypt and save this device to cloud storage.'
+                      : 'Encrypt and create a local preview save from this device.',
                   onTap: () => Navigator.of(
                     context,
                   ).pop(_SettingsPrivacyAction.saveCloudSave),
@@ -133,7 +139,9 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   icon: Icons.cloud_download_outlined,
                   title: 'Restore cloud save',
                   subtitle: cloudSaveMetadata == null
-                      ? 'Save this device before restoring.'
+                      ? cloudSaveInfo.isRemote
+                            ? 'Save this device before restoring.'
+                            : 'Create a preview save before restoring.'
                       : 'Latest save: ${_formatDateTime(cloudSaveMetadata!.createdAt)}.',
                   onTap: cloudSaveMetadata == null
                       ? null
@@ -229,15 +237,20 @@ class _PrivacyStorageInfoScreen extends StatelessWidget {
   const _PrivacyStorageInfoScreen({
     required this.snapshot,
     required this.storeInfo,
+    required this.cloudSaveInfo,
     required this.cloudSaveMetadata,
   });
 
   final AppSnapshot snapshot;
   final AppStoreInfo storeInfo;
+  final CloudSaveAdapterInfo cloudSaveInfo;
   final CloudSaveMetadata? cloudSaveMetadata;
 
   @override
   Widget build(BuildContext context) {
+    final cloudSaveTitle = cloudSaveInfo.isRemote
+        ? 'Cloud save'
+        : 'Cloud save preview';
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy & storage')),
       body: SafeArea(
@@ -289,13 +302,20 @@ class _PrivacyStorageInfoScreen extends StatelessWidget {
                     value: snapshot.schemaVersion.toString(),
                   ),
                   const SizedBox(height: 18),
-                  const _SettingsSectionTitle('Cloud save preview'),
-                  const _SettingsNotice(
-                    icon: Icons.cloud_queue_outlined,
-                    title: 'Preview only',
-                    message:
-                        'Cloud saves are encrypted with a recovery key and stored locally until the server exists.',
+                  _SettingsSectionTitle(cloudSaveTitle),
+                  _SettingsNotice(
+                    icon: cloudSaveInfo.isRemote
+                        ? Icons.cloud_done_outlined
+                        : Icons.cloud_queue_outlined,
+                    title: cloudSaveInfo.isRemote
+                        ? 'Remote endpoint configured'
+                        : 'Preview only',
+                    message: cloudSaveInfo.isRemote
+                        ? 'Cloud saves are encrypted with a recovery key before upload. This device remains the source of truth.'
+                        : 'Cloud saves are encrypted with a recovery key and stored locally until a remote endpoint is configured.',
                   ),
+                  _SafetyRow(label: 'Provider', value: cloudSaveInfo.label),
+                  _SafetyRow(label: 'Location', value: cloudSaveInfo.location),
                   _SafetyRow(
                     label: 'Status',
                     value: cloudSaveMetadata == null

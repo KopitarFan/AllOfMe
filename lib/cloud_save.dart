@@ -177,6 +177,8 @@ class CloudSaveEncodedPayload {
 }
 
 abstract class CloudSaveAdapter {
+  CloudSaveAdapterInfo get info;
+
   Future<CloudSaveMetadata> saveNow(CloudSavePackage package);
 
   Future<CloudSaveMetadata?> latestMetadata();
@@ -186,11 +188,31 @@ abstract class CloudSaveAdapter {
   Future<List<CloudSaveMetadata>> listVersions();
 }
 
+class CloudSaveAdapterInfo {
+  const CloudSaveAdapterInfo({
+    required this.label,
+    required this.location,
+    required this.isRemote,
+  });
+
+  const CloudSaveAdapterInfo.localPreview()
+    : label = 'Local preview',
+      location = 'This device',
+      isRemote = false;
+
+  final String label;
+  final String location;
+  final bool isRemote;
+}
+
 class MemoryCloudSaveAdapter implements CloudSaveAdapter {
   MemoryCloudSaveAdapter({this.maxVersions = 5});
 
   final int maxVersions;
   final List<CloudSavePackage> _packages = [];
+
+  @override
+  CloudSaveAdapterInfo get info => const CloudSaveAdapterInfo.localPreview();
 
   @override
   Future<CloudSaveMetadata> saveNow(CloudSavePackage package) async {
@@ -226,6 +248,9 @@ class SharedPreferencesCloudSaveAdapter implements CloudSaveAdapter {
   static const _packagesKey = 'all_of_me.cloud_save.mock.v1.packages';
 
   final int maxVersions;
+
+  @override
+  CloudSaveAdapterInfo get info => const CloudSaveAdapterInfo.localPreview();
 
   @override
   Future<CloudSaveMetadata> saveNow(CloudSavePackage package) async {

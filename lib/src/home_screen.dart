@@ -811,6 +811,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final info = await widget.store.info();
       final lockStatus = await widget.authenticator.status();
       final cloudSaveMetadata = await widget.cloudSaveAdapter.latestMetadata();
+      final cloudSaveInfo = widget.cloudSaveAdapter.info;
       if (!mounted) {
         return;
       }
@@ -823,6 +824,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => _SettingsPrivacyDialog(
           snapshot: snapshot,
           storeInfo: info,
+          cloudSaveInfo: cloudSaveInfo,
           cloudSaveMetadata: cloudSaveMetadata,
           lockStatus: lockStatus,
           themeMode: widget.themeMode,
@@ -861,6 +863,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           await _showPrivacyStorageInfo(
             snapshot: snapshot,
             storeInfo: info,
+            cloudSaveInfo: cloudSaveInfo,
             cloudSaveMetadata: cloudSaveMetadata,
           );
           return;
@@ -891,6 +894,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _showPrivacyStorageInfo({
     required AppSnapshot snapshot,
     required AppStoreInfo storeInfo,
+    required CloudSaveAdapterInfo cloudSaveInfo,
     required CloudSaveMetadata? cloudSaveMetadata,
   }) async {
     await Navigator.of(context).push(
@@ -899,6 +903,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         builder: (context) => _PrivacyStorageInfoScreen(
           snapshot: snapshot,
           storeInfo: storeInfo,
+          cloudSaveInfo: cloudSaveInfo,
           cloudSaveMetadata: cloudSaveMetadata,
         ),
       ),
@@ -953,7 +958,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Cloud save preview saved ${_formatDateTime(metadata.createdAt)}.',
+            '${_cloudSaveLabel()} saved ${_formatDateTime(metadata.createdAt)}.',
           ),
         ),
       );
@@ -961,9 +966,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cloud save preview failed.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${_cloudSaveLabel()} failed.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -1021,7 +1026,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
       if (package == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No cloud save preview found.')),
+          SnackBar(content: Text('No ${_cloudSaveLabelLower()} found.')),
         );
         return;
       }
@@ -1041,7 +1046,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             content: Text(
               package.payload.requiresDecoder
                   ? 'Recovery key did not unlock this cloud save.'
-                  : 'Cloud save preview could not restore.',
+                  : '${_cloudSaveLabel()} could not restore.',
             ),
           ),
         );
@@ -1050,16 +1055,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       await _restoreBackup(
         validation.backupJson!,
-        successMessage: 'Cloud save preview restored.',
+        successMessage: '${_cloudSaveLabel()} restored.',
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cloud save preview could not restore.')),
+        SnackBar(content: Text('${_cloudSaveLabel()} could not restore.')),
       );
     }
+  }
+
+  String _cloudSaveLabel() {
+    return widget.cloudSaveAdapter.info.isRemote
+        ? 'Cloud save'
+        : 'Cloud save preview';
+  }
+
+  String _cloudSaveLabelLower() {
+    return widget.cloudSaveAdapter.info.isRemote
+        ? 'cloud save'
+        : 'cloud save preview';
   }
 
   Future<void> _clearLocalData() async {
