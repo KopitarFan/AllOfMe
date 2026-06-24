@@ -24,6 +24,25 @@ The local store keeps save metadata in SQLite and encrypted package JSON files
 under the configured data directory. Tests default to the in-memory store unless
 a test injects a specific store.
 
+Production runs behind Caddy, so `TRUST_PROXY=true` lets Fastify rate-limit by
+the original client IP forwarded by the reverse proxy. Port `3000` must stay
+bound to localhost only when this is enabled.
+
+## Abuse Controls
+
+The server rejects cloud-save payloads over `CLOUD_SAVE_MAX_PAYLOAD_BYTES` and
+uses in-memory rate limits for the single production container:
+
+- `RATE_LIMIT_MAX`: global API requests per IP per window, default `300`.
+- `RATE_LIMIT_TIME_WINDOW_MS`: global API window, default `60000`.
+- `RATE_LIMIT_REGISTRATION_MAX`: device registrations per IP per window,
+  default `5`.
+- `RATE_LIMIT_REGISTRATION_TIME_WINDOW_MS`: registration window, default
+  `900000`.
+- `RATE_LIMIT_SAVE_MAX`: save uploads per bearer token per window, default
+  `30`.
+- `RATE_LIMIT_SAVE_TIME_WINDOW_MS`: save-upload window, default `60000`.
+
 ## Checks
 
 ```sh
