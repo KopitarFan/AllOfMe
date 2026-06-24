@@ -29,8 +29,8 @@ void main() {
       session: CloudSaveSession.create(
         baseUrl: 'https://cloud.example.test/api',
         accountLabel: 'Test account',
-        accessToken: ' token ',
       ),
+      tokenStore: MemoryCloudSaveTokenStore(' token '),
     );
 
     expect(adapter, isA<RemoteCloudSaveAdapter>());
