@@ -178,18 +178,27 @@ class RemoteCloudSaveAuthClient {
 }
 
 class CloudSaveRemoteException implements Exception {
-  const CloudSaveRemoteException(this.message, {this.statusCode});
+  const CloudSaveRemoteException(
+    this.message, {
+    this.statusCode,
+    this.errorId,
+    this.requestId,
+  });
 
   final String message;
   final int? statusCode;
+  final String? errorId;
+  final String? requestId;
+
+  String? get supportReference => errorId ?? requestId;
 
   @override
   String toString() {
     final code = statusCode;
-    if (code == null) {
-      return 'CloudSaveRemoteException: $message';
-    }
-    return 'CloudSaveRemoteException($code): $message';
+    final reference = supportReference;
+    final codeLabel = code == null ? '' : '($code)';
+    final referenceLabel = reference == null ? '' : ' [$reference]';
+    return 'CloudSaveRemoteException$codeLabel: $message$referenceLabel';
   }
 }
 
@@ -340,9 +349,12 @@ void _ensureSuccess(http.Response response, {required String action}) {
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return;
   }
+  final details = _remoteErrorDetails(response);
   throw CloudSaveRemoteException(
     'Could not $action.',
     statusCode: response.statusCode,
+    errorId: details.errorId,
+    requestId: details.requestId,
   );
 }
 
@@ -381,6 +393,29 @@ Map<String, Object?> _metadataMap(Map<String, Object?> json) {
   return _objectMap(metadata);
 }
 
+_RemoteErrorDetails _remoteErrorDetails(http.Response response) {
+  final headerErrorId = _trimmedOrNull(response.headers['x-error-id']);
+  final headerRequestId = _trimmedOrNull(response.headers['x-request-id']);
+  try {
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is Map) {
+      final json = decoded.cast<String, Object?>();
+      return _RemoteErrorDetails(
+        errorId: _trimmedOrNull(json['errorId'] as String?) ?? headerErrorId,
+        requestId:
+            _trimmedOrNull(json['requestId'] as String?) ?? headerRequestId,
+      );
+    }
+  } catch (_) {
+    // Server errors can be plain text from proxies or older deployments.
+  }
+
+  return _RemoteErrorDetails(
+    errorId: headerErrorId,
+    requestId: headerRequestId,
+  );
+}
+
 List<Object?>? _listValue(Object? value) {
   if (value is List<Object?>) {
     return value;
@@ -394,4 +429,11 @@ List<Object?>? _listValue(Object? value) {
 String? _trimmedOrNull(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+class _RemoteErrorDetails {
+  const _RemoteErrorDetails({this.errorId, this.requestId});
+
+  final String? errorId;
+  final String? requestId;
 }

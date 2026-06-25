@@ -43,20 +43,23 @@ only contain non-secret defaults.
 
 ## Admin Commands
 
-Run admin commands from the server app directory on the host. They inspect
-metadata only; encrypted cloud-save package contents stay opaque.
+Run admin commands from the production Compose directory on the host. The
+admin CLI ships inside the API container image and inspects the mounted local
+SQLite store. It reports metadata only; encrypted cloud-save package contents
+stay opaque.
 
 ```sh
-cd /opt/allofme/app/server
-pnpm admin stats --data-dir /opt/allofme/cloud-saves
-pnpm admin accounts list --data-dir /opt/allofme/cloud-saves
-pnpm admin account show ACCOUNT_ID --data-dir /opt/allofme/cloud-saves
-pnpm admin device revoke DEVICE_ID --data-dir /opt/allofme/cloud-saves --yes
-pnpm admin account delete ACCOUNT_ID --data-dir /opt/allofme/cloud-saves --yes
+cd /opt/allofme/app
+sudo docker compose --env-file .env.production exec api node dist/admin-cli.js stats
+sudo docker compose --env-file .env.production exec api node dist/admin-cli.js accounts list
+sudo docker compose --env-file .env.production exec api node dist/admin-cli.js account show ACCOUNT_ID
+sudo docker compose --env-file .env.production exec api node dist/admin-cli.js device revoke DEVICE_ID --yes
+sudo docker compose --env-file .env.production exec api node dist/admin-cli.js account delete ACCOUNT_ID --yes
 ```
 
 Use `--json` when copying output into another tool. Destructive commands require
-`--yes` and should be preceded by a production backup.
+`--yes` and should be preceded by a production backup. For non-interactive SSH
+runs, use `docker compose exec -T` instead of `docker compose exec`.
 
 ## GitHub Workflows
 
@@ -205,6 +208,13 @@ Check logs:
 ```sh
 sudo docker logs --tail=120 allofme-server
 sudo journalctl -u caddy --no-pager -n 120
+```
+
+Cloud-save API error responses include `errorId` and `requestId`. If the app
+shows a reference code, search the API logs for it:
+
+```sh
+sudo docker logs allofme-server 2>&1 | grep ERROR_ID
 ```
 
 ## Smoke Tests

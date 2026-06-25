@@ -396,6 +396,18 @@ String _cloudSaveStatusLabel({
   return cloudSaveInfo.isRemote ? 'Connected' : 'Not connected';
 }
 
+String _cloudSaveFailureMessage(String message, Object error) {
+  final reference = switch (error) {
+    CloudSaveRemoteException(:final supportReference) => supportReference,
+    _ => null,
+  };
+  if (reference == null) {
+    return message;
+  }
+  final separator = RegExp(r'[.!?]$').hasMatch(message) ? ' ' : '. ';
+  return '$message${separator}Reference: $reference.';
+}
+
 class CloudSaveConnection {
   const CloudSaveConnection({required this.session, required this.accessToken});
 
@@ -513,13 +525,14 @@ class _CloudSaveConnectionDialogState
       Navigator.of(context).pop(
         CloudSaveConnection(session: session, accessToken: registration.token),
       );
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _errorText = _mode == _CloudSaveConnectionMode.linkExisting
+          final message = _mode == _CloudSaveConnectionMode.linkExisting
               ? 'Could not link this device. Check the server URL and code.'
               : 'Could not register this device. Check the server URL and try again.';
+          _errorText = _cloudSaveFailureMessage(message, error);
         });
       }
     }

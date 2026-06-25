@@ -218,9 +218,32 @@ void main() {
   test('remote adapter surfaces server failures', () async {
     final adapter = RemoteCloudSaveAdapter(
       baseUrl: Uri.parse('https://cloud.example.test'),
-      client: MockClient((request) async => http.Response('unavailable', 503)),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'message': 'Could not save cloud save.',
+            'errorId': 'err-save-test',
+            'requestId': 'req-save-test',
+          }),
+          503,
+          headers: {'x-request-id': 'req-save-test'},
+        ),
+      ),
     );
 
-    expect(adapter.latestMetadata(), throwsA(isA<CloudSaveRemoteException>()));
+    await expectLater(
+      adapter.latestMetadata(),
+      throwsA(
+        isA<CloudSaveRemoteException>()
+            .having((error) => error.statusCode, 'statusCode', 503)
+            .having((error) => error.errorId, 'errorId', 'err-save-test')
+            .having((error) => error.requestId, 'requestId', 'req-save-test')
+            .having(
+              (error) => error.supportReference,
+              'supportReference',
+              'err-save-test',
+            ),
+      ),
+    );
   });
 }

@@ -828,8 +828,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       String? cloudSaveErrorMessage;
       try {
         cloudSaveMetadata = await widget.cloudSaveAdapter.latestMetadata();
-      } catch (_) {
-        cloudSaveErrorMessage = 'Remote unavailable';
+      } catch (error) {
+        cloudSaveErrorMessage = _cloudSaveFailureMessage(
+          'Remote unavailable',
+          error,
+        );
       }
       if (!mounted) {
         return;
@@ -995,12 +998,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         context: context,
         builder: (context) => _CloudSaveDeviceLinkCodeDialog(linkCode),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not create a device link code.')),
+        SnackBar(
+          content: Text(
+            _cloudSaveFailureMessage(
+              'Could not create a device link code.',
+              error,
+            ),
+          ),
+        ),
       );
     }
   }
@@ -1084,9 +1094,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${_cloudSaveLabel()} failed.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _cloudSaveFailureMessage('${_cloudSaveLabel()} failed.', error),
+          ),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -1180,7 +1194,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_cloudSaveLabel()} could not restore.')),
+        SnackBar(
+          content: Text(
+            _cloudSaveFailureMessage(
+              '${_cloudSaveLabel()} could not restore.',
+              error,
+            ),
+          ),
+        ),
       );
     }
   }
