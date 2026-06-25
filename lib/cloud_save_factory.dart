@@ -5,6 +5,8 @@ import 'cloud_save_session.dart';
 const String cloudSaveBaseUrlEnvironmentKey = 'ALLOFME_CLOUD_SAVE_BASE_URL';
 const String cloudSaveAccountLabelEnvironmentKey =
     'ALLOFME_CLOUD_SAVE_ACCOUNT_LABEL';
+const String officialCloudSaveBaseUrl = 'https://api.allofmeapp.com/';
+const String officialCloudSaveAccountLabel = 'All Of Me Cloud';
 
 class CloudSaveSessionCredentialsProvider
     implements CloudSaveCredentialsProvider {
@@ -62,6 +64,22 @@ CloudSaveSession? defaultCloudSaveSessionFromEnvironment({
 
   return CloudSaveSession.create(
     baseUrl: trimmedBaseUrl,
+    accountLabel: _trimmedOrNull(accountLabel),
+  );
+}
+
+CloudSaveSession defaultCloudSaveConnectionSession({
+  String baseUrl = const String.fromEnvironment(
+    cloudSaveBaseUrlEnvironmentKey,
+    defaultValue: officialCloudSaveBaseUrl,
+  ),
+  String accountLabel = const String.fromEnvironment(
+    cloudSaveAccountLabelEnvironmentKey,
+    defaultValue: officialCloudSaveAccountLabel,
+  ),
+}) {
+  return CloudSaveSession.create(
+    baseUrl: baseUrl,
     accountLabel: _trimmedOrNull(accountLabel),
   );
 }

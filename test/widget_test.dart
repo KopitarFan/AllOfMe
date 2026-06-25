@@ -1,5 +1,6 @@
 import 'package:all_of_me_demo/app_lock.dart';
 import 'package:all_of_me_demo/cloud_save.dart';
+import 'package:all_of_me_demo/cloud_save_factory.dart';
 import 'package:all_of_me_demo/cloud_save_remote.dart';
 import 'package:all_of_me_demo/cloud_save_session.dart';
 import 'package:all_of_me_demo/main.dart';
@@ -306,6 +307,27 @@ void main() {
     expect(find.text('Cloud save'), findsOneWidget);
     expect(find.text('Not connected'), findsWidgets);
     expect(find.text('No cloud save yet'), findsOneWidget);
+  });
+
+  testWidgets('prefills official cloud save server in connect dialog', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Connect cloud save');
+    await tester.pumpAndSettle();
+
+    final serverUrlField = tester.widget<TextField>(
+      find.widgetWithText(TextField, 'Server URL'),
+    );
+    final accountLabelField = tester.widget<TextField>(
+      find.widgetWithText(TextField, 'Account label'),
+    );
+
+    expect(serverUrlField.controller?.text, officialCloudSaveBaseUrl);
+    expect(accountLabelField.controller?.text, officialCloudSaveAccountLabel);
   });
 
   testWidgets('connects and disconnects cloud save from settings', (

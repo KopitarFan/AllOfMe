@@ -56,6 +56,23 @@ pnpm build
 GitHub Actions runs the same checks, plus a production Docker image build, in
 `Server CI`.
 
+## Admin Commands
+
+The admin toolkit inspects the local SQLite cloud-save store. It reports
+metadata only and never decrypts cloud-save packages.
+
+```sh
+pnpm admin stats
+pnpm admin accounts list
+pnpm admin account show <accountId>
+pnpm admin account delete <accountId> --yes
+pnpm admin device revoke <deviceId> --yes
+```
+
+Use `--json` for machine-readable output and `--data-dir <dir>` when operating
+outside the configured `CLOUD_SAVE_DATA_DIR`. Destructive commands require
+`--yes` so they are hard to run accidentally.
+
 ## Image Publishing
 
 `Server Image` publishes the production image to GitHub Container Registry
