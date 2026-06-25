@@ -435,12 +435,11 @@ class _CloudSaveConnectionDialogState
   @override
   void initState() {
     super.initState();
-    final initialSession = widget.initialSession;
-    _baseUrlController = TextEditingController(
-      text: initialSession?.baseUrl ?? '',
-    );
+    final initialSession =
+        widget.initialSession ?? defaultCloudSaveConnectionSession();
+    _baseUrlController = TextEditingController(text: initialSession.baseUrl);
     _accountLabelController = TextEditingController(
-      text: initialSession?.accountLabel ?? '',
+      text: initialSession.accountLabel,
     );
     _deviceLabelController = TextEditingController(text: 'This device');
     _accessTokenController = TextEditingController();
@@ -572,7 +571,7 @@ class _CloudSaveConnectionDialogState
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Server URL',
-                hintText: 'https://cloud.example.com/api/',
+                hintText: officialCloudSaveBaseUrl,
               ),
             ),
             const SizedBox(height: 12),
@@ -581,7 +580,7 @@ class _CloudSaveConnectionDialogState
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Account label',
-                hintText: 'Personal cloud save',
+                hintText: officialCloudSaveAccountLabel,
               ),
             ),
             const SizedBox(height: 12),

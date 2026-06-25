@@ -38,6 +38,14 @@ void main() {
     expect(adapter.info.accountLabel, 'Test account');
   });
 
+  test('factory prefills official cloud without auto-connecting', () {
+    final connectionSession = defaultCloudSaveConnectionSession();
+
+    expect(connectionSession.baseUrl, officialCloudSaveBaseUrl);
+    expect(connectionSession.accountLabel, officialCloudSaveAccountLabel);
+    expect(defaultCloudSaveSessionFromEnvironment(baseUrl: ''), isNull);
+  });
+
   test('auth client registers devices and parses bearer tokens', () async {
     final client = RemoteCloudSaveAuthClient(
       baseUrl: Uri.parse('https://cloud.example.test/api'),

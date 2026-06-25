@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "admin": "tsx src/admin-cli.ts",
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",

@@ -41,6 +41,23 @@ enabled.
 Do not commit production secrets. The checked-in production env example should
 only contain non-secret defaults.
 
+## Admin Commands
+
+Run admin commands from the server app directory on the host. They inspect
+metadata only; encrypted cloud-save package contents stay opaque.
+
+```sh
+cd /opt/allofme/app/server
+pnpm admin stats --data-dir /opt/allofme/cloud-saves
+pnpm admin accounts list --data-dir /opt/allofme/cloud-saves
+pnpm admin account show ACCOUNT_ID --data-dir /opt/allofme/cloud-saves
+pnpm admin device revoke DEVICE_ID --data-dir /opt/allofme/cloud-saves --yes
+pnpm admin account delete ACCOUNT_ID --data-dir /opt/allofme/cloud-saves --yes
+```
+
+Use `--json` when copying output into another tool. Destructive commands require
+`--yes` and should be preceded by a production backup.
+
 ## GitHub Workflows
 
 - `Flutter CI`: analyzes and tests the Flutter app.
