@@ -564,6 +564,27 @@ void main() {
     );
   });
 
+  testWidgets('shows cloud save error references when remote saves fail', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      cloudSaveAdapter: const _UnavailableCloudSaveAdapter(
+        errorId: 'err-save-test',
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Settings and privacy'));
+    await tester.pumpAndSettle();
+    await tapSettingsTile(tester, 'Save now');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Cloud save failed. Reference: err-save-test.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows beta feedback support details', (tester) async {
     await pumpApp(tester);
 
@@ -1430,6 +1451,10 @@ List<int> _reverseCloudSavePayload(CloudSavePayload _, List<int> payloadBytes) {
 }
 
 class _UnavailableCloudSaveAdapter implements CloudSaveAdapter {
+  const _UnavailableCloudSaveAdapter({this.errorId});
+
+  final String? errorId;
+
   @override
   CloudSaveAdapterInfo get info => const CloudSaveAdapterInfo(
     label: 'Remote cloud save',
@@ -1440,22 +1465,26 @@ class _UnavailableCloudSaveAdapter implements CloudSaveAdapter {
 
   @override
   Future<CloudSaveMetadata?> latestMetadata() async {
-    throw const CloudSaveRemoteException('offline');
+    throw _offline();
   }
 
   @override
   Future<CloudSavePackage?> downloadLatest() async {
-    throw const CloudSaveRemoteException('offline');
+    throw _offline();
   }
 
   @override
   Future<List<CloudSaveMetadata>> listVersions() async {
-    throw const CloudSaveRemoteException('offline');
+    throw _offline();
   }
 
   @override
   Future<CloudSaveMetadata> saveNow(CloudSavePackage package) async {
-    throw const CloudSaveRemoteException('offline');
+    throw _offline();
+  }
+
+  CloudSaveRemoteException _offline() {
+    return CloudSaveRemoteException('offline', errorId: errorId);
   }
 }
 
