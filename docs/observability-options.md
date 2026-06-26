@@ -215,13 +215,21 @@ before the app update is submitted.
 
 ## First Implementation Slice
 
-The next small implementation slice should be:
+Implemented in the repository:
 
-1. Add an observability section to the production runbook.
-2. Add a backup heartbeat URL placeholder to the production backup env file docs.
-3. Add a host-side `allofme-ops-summary` command or documented shell snippet that
-   prints disk usage, backup age, Docker status, and admin stats.
-4. Configure one external uptime check for `/healthz`.
+- Production runbook observability setup.
+- Backup heartbeat URL placeholders for `/etc/allofme-backup.env`.
+- Host-side ops summary script at `scripts/allofme_ops_summary.sh`.
+
+Manual production setup still needed:
+
+1. Copy `scripts/allofme_ops_summary.sh` to
+   `/usr/local/sbin/allofme-ops-summary` on the VPS.
+2. Configure one external uptime check for `/healthz`.
+3. Configure one external TLS expiry check.
+4. Configure one backup heartbeat URL and add it to `/etc/allofme-backup.env`.
+5. Update `/usr/local/sbin/allofme-backup` to ping the heartbeat after success
+   and optionally after failure.
 
 That gives us useful alerting without changing app behavior or adding mobile
 telemetry.
