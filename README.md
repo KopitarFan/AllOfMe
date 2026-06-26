@@ -16,9 +16,12 @@ The core paradigm is inverted from client-server:
 ## Workspace
 
 - Flutter app: `lib/`
+- Cloud Save server: `server/`
 - Tests: `test/`
 - Product milestones: `docs/milestones.md`
 - Architecture notes: `docs/local-first-architecture.md`
+- Server runbook: `docs/server-production-runbook.md`
+- Observability options: `docs/observability-options.md`
 - iOS release packaging: `docs/release-packaging.md`
 - App Store metadata draft: `docs/app-store-metadata.md`
 - Screenshot checklist: `docs/screenshot-checklist.md`
@@ -48,6 +51,10 @@ The app now has a first pass at Milestone 1:
 - On-device persistence through a local SQLite/Drift database on device builds, with migration from the earlier app-support JSON file and original `shared_preferences` store.
 - Readable JSON backup export to a local backup file where supported, with platform share-sheet and copy/paste fallback.
 - Backup import from a native JSON file picker or pasted JSON.
+- Optional encrypted Cloud Save backup/restore using All Of Me Cloud or another
+  compatible server, with the current device remaining the source of truth.
+- One-time Cloud Save device link codes for connecting a new device to an
+  existing Cloud Save account.
 - Settings & Privacy hub for privacy policy, storage details, backup/restore, app lock, demo data, and local reset.
 - Clear all local data action for removing app-owned members, groups, sessions, notes, backups, and profile images on the device.
 - Main-screen app lock using Face ID or the device passcode where supported.
