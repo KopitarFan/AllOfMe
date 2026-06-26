@@ -1,6 +1,6 @@
 # Server Production Runbook
 
-Last updated: 2026-06-24
+Last updated: 2026-06-26
 
 This runbook covers the All Of Me cloud-save API running on Vultr.
 
@@ -60,6 +60,9 @@ sudo docker compose --env-file .env.production exec api node dist/admin-cli.js a
 Use `--json` when copying output into another tool. Destructive commands require
 `--yes` and should be preceded by a production backup. For non-interactive SSH
 runs, use `docker compose exec -T` instead of `docker compose exec`.
+
+For monitoring/tooling options and the recommended 1.0 observability slice, see
+`docs/observability-options.md`.
 
 ## GitHub Workflows
 

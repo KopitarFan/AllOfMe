@@ -6,10 +6,10 @@ This is the iOS/TestFlight packaging checklist for All Of Me.
 
 - App display name: All Of Me
 - Bundle identifier: `com.allofme.allofme`
-- Version: `0.1.0`
-- Build: `1`
+- Version: `1.0.0`
+- Build: `14`
 - Minimum iOS deployment target: iOS 13.0
-- Privacy posture: local-first, no tracking, no collected data declared by the app target
+- Privacy posture: local-first, no tracking, optional encrypted Cloud Save
 
 If the Apple Developer account requires a different bundle identifier, update
 `PRODUCT_BUNDLE_IDENTIFIER` in `ios/Runner.xcodeproj/project.pbxproj` and the
@@ -61,8 +61,8 @@ Screenshot planning lives in `docs/screenshot-checklist.md`.
 - SKU: `allofme-ios`
 - Privacy Policy URL: publish `docs/privacy-policy.md` through GitHub Pages or another public site
 - Support URL: publish `docs/support.md` through GitHub Pages or another public site
-- Age rating notes: no user-generated public sharing, no account system, no network sync in this build
-- Privacy summary: data is stored locally on the device; backups, imports, profile images, and app lock are explicit user actions
+- Age rating notes: no user-generated public sharing, no required account, no live network sync in this build
+- Privacy summary: data is stored locally on the device by default; backups, imports, profile images, Cloud Save, and app lock are explicit user actions
 
 ## TestFlight Smoke Test
 
@@ -78,6 +78,10 @@ Latest local readiness report:
 - Add and soft-delete a timeline note, then restore it from Recently Deleted.
 - Add a member profile image from Photos.
 - Export a backup, import it, and confirm member identity/order survives.
+- Connect Cloud Save, save an encrypted restore point, restore it, and confirm
+  member identity/order survives.
+- Create a Cloud Save device link code, redeem it on another test device, and
+  restore using the recovery key.
 - Enable app lock, background the app, and confirm Face ID/passcode unlock.
 - Clear all local data and confirm the app returns to an empty local system.
 
