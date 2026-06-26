@@ -33,6 +33,7 @@ enabled.
 - Persistent app data: `/opt/allofme/cloud-saves`
 - Local backup archives: `/opt/allofme/backups`
 - Backup script: `/usr/local/sbin/allofme-backup`
+- Ops summary script: `/usr/local/sbin/allofme-ops-summary`
 - Backup env file: `/etc/allofme-backup.env`
 - Caddy config: `/etc/caddy/Caddyfile`
 - Backup cron: `/etc/cron.d/allofme-backup`
@@ -63,6 +64,45 @@ runs, use `docker compose exec -T` instead of `docker compose exec`.
 
 For monitoring/tooling options and the recommended 1.0 observability slice, see
 `docs/observability-options.md`.
+
+## Observability Quick Setup
+
+Use an external hosted monitor for production checks. The monitor must run
+outside the Vultr host so it can alert when the VPS, Docker, Caddy, DNS, or TLS
+is broken.
+
+Minimum 1.0 monitors:
+
+- HTTP check: `GET https://api.allofmeapp.com/healthz`
+- TLS certificate expiry check: `api.allofmeapp.com`
+- Backup heartbeat: one successful ping from the scheduled backup job
+
+The HTTP check should expect:
+
+- status `200`
+- response body containing `{"ok":true}`
+
+Install the host-side ops summary helper:
+
+```sh
+cd /opt/allofme/app
+sudo install -m 0755 scripts/allofme_ops_summary.sh /usr/local/sbin/allofme-ops-summary
+```
+
+Run it after deploys, backup changes, or support incidents:
+
+```sh
+sudo /usr/local/sbin/allofme-ops-summary
+```
+
+The script prints health checks, disk usage, backup age, Docker Compose status,
+admin stats, recent API errors, and the backup log tail. It is read-only and does
+not print encrypted package contents, recovery keys, request bodies, member
+names, notes, or profile images.
+
+If a monitor asks for the expected check interval, use the backup cron interval
+plus a grace period. For a daily backup, alert when no heartbeat arrives for
+`26-30` hours.
 
 ## GitHub Workflows
 
@@ -329,14 +369,63 @@ S3_PROFILE=allofme-vultr
 S3_ENDPOINT=https://sjc1.vultrobjects.com
 S3_BUCKET=allofme-backup-data
 S3_REGION=us-east-1
+BACKUP_HEARTBEAT_URL=
+BACKUP_HEARTBEAT_FAILURE_URL=
 ```
 
 The secret access key belongs in `/root/.aws/credentials`, not in the repo.
+
+`BACKUP_HEARTBEAT_URL` should be the success ping URL from the monitoring
+provider. `BACKUP_HEARTBEAT_FAILURE_URL` is optional; use it only if the provider
+supports explicit failure pings. Keep both URLs in `/etc/allofme-backup.env`,
+not in the repo.
+
+The production backup script should ping the monitor after success and, when
+configured, after failure. The heartbeat must not change the backup exit status:
+
+```sh
+run_backup_commands() {
+  # Keep the existing tar/archive/upload commands here.
+}
+
+notify_backup_success() {
+  if [ -n "${BACKUP_HEARTBEAT_URL:-}" ]; then
+    curl --fail --show-error --silent --max-time 10 --retry 3 \
+      "$BACKUP_HEARTBEAT_URL" >/dev/null || true
+  fi
+}
+
+notify_backup_failure() {
+  if [ -n "${BACKUP_HEARTBEAT_FAILURE_URL:-}" ]; then
+    curl --fail --show-error --silent --max-time 10 --retry 3 \
+      "$BACKUP_HEARTBEAT_FAILURE_URL" >/dev/null || true
+  fi
+}
+
+backup_exit_status=0
+run_backup_commands || backup_exit_status=$?
+
+if [ "$backup_exit_status" -eq 0 ]; then
+  notify_backup_success
+else
+  notify_backup_failure
+fi
+
+exit "$backup_exit_status"
+```
 
 The scheduled backup should be in `/etc/cron.d/allofme-backup`. Check its log:
 
 ```sh
 sudo tail -120 /var/log/allofme-backup.log
+```
+
+After the heartbeat is configured, run one manual backup and confirm the monitor
+received the ping:
+
+```sh
+sudo /usr/local/sbin/allofme-backup
+sudo /usr/local/sbin/allofme-ops-summary
 ```
 
 ## Backup Restore Drill
