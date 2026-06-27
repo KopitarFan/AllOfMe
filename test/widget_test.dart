@@ -184,6 +184,17 @@ void main() {
     }
   }
 
+  void expectTextsInVerticalOrder(WidgetTester tester, List<String> labels) {
+    var previousTop = -double.infinity;
+    for (final label in labels) {
+      final labelFinder = find.text(label).first;
+      expect(labelFinder, findsOneWidget);
+      final top = tester.getTopLeft(labelFinder).dy;
+      expect(top, greaterThan(previousTop));
+      previousTop = top;
+    }
+  }
+
   Future<void> tapCheckedMenuOption(WidgetTester tester, String label) async {
     final key = switch (label) {
       'A-Z' => 'member-sort-nameAscending',
@@ -232,15 +243,12 @@ void main() {
     expect(find.widgetWithText(SwitchListTile, 'Dark mode'), findsOneWidget);
     expect(find.text('Theme'), findsOneWidget);
     expect(find.text('Sage'), findsOneWidget);
-    expect(find.text('Graphite'), findsOneWidget);
-    expect(find.text('Black'), findsOneWidget);
-    expect(find.text('Bright blue'), findsOneWidget);
-    expect(find.text('Bright green'), findsOneWidget);
-    expect(find.text('Bright lime'), findsOneWidget);
-    expect(find.text('Bright pink'), findsOneWidget);
-    expect(find.text('Hot pink'), findsOneWidget);
-    expect(find.text('Bright orange'), findsOneWidget);
-    expect(find.text('Bright purple'), findsOneWidget);
+    for (final palette in AppThemePalette.values) {
+      expect(
+        find.byKey(ValueKey('theme-palette-${palette.id}')),
+        findsOneWidget,
+      );
+    }
     expect(
       find.byKey(const ValueKey('theme-palette-preview-black')),
       findsOneWidget,
@@ -264,6 +272,16 @@ void main() {
     final blackDecoration = blackGradient.decoration as BoxDecoration;
     final blackLinearGradient = blackDecoration.gradient as LinearGradient;
     expect(blackLinearGradient.colors.last, AppThemePalette.black.darkScaffold);
+    expectTextsInVerticalOrder(tester, const [
+      'Appearance',
+      'App Lock',
+      'Cloud Save',
+      'Backup & Restore',
+      'Recovery',
+      'Information',
+      'Reset',
+    ]);
+    expect(find.text('App Lock'), findsOneWidget);
     expect(find.text('Information'), findsOneWidget);
     expect(find.text('Privacy & storage'), findsOneWidget);
     expect(find.widgetWithText(SwitchListTile, 'App lock'), findsOneWidget);
@@ -272,7 +290,7 @@ void main() {
     expect(find.text('Export backup'), findsOneWidget);
     expect(find.text('Import file'), findsOneWidget);
     expect(find.text('Paste JSON'), findsOneWidget);
-    expect(find.text('Cloud save'), findsOneWidget);
+    expect(find.text('Cloud Save'), findsOneWidget);
     expect(find.text('Connect cloud save'), findsOneWidget);
     expect(
       find.text('Not connected - save and restore stay on this device.'),
@@ -328,6 +346,13 @@ void main() {
 
     expect(serverUrlField.controller?.text, officialCloudSaveBaseUrl);
     expect(accountLabelField.controller?.text, officialCloudSaveAccountLabel);
+    expect(find.text('All Of Me Cloud is ready'), findsOneWidget);
+    expect(
+      find.text(
+        'Already filled for All Of Me Cloud. Change only for another server.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('connects and disconnects cloud save from settings', (
@@ -509,8 +534,9 @@ void main() {
     await tapSettingsTile(tester, 'Connect cloud save');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Existing'));
+    await tester.tap(find.text('Link device'));
     await tester.pumpAndSettle();
+    expect(find.text('Link an existing cloud save'), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextField, 'Server URL'),
       'https://cloud.example.test/api',
@@ -527,7 +553,7 @@ void main() {
       find.widgetWithText(TextField, 'Link code'),
       'aom-12345-abcde',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Link device'));
     await tester.pumpAndSettle();
 
     expect(linkedSession?.baseUrl, 'https://cloud.example.test/api/');
@@ -548,7 +574,7 @@ void main() {
     await tester.tap(find.byTooltip('Settings and privacy'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Cloud save'), findsOneWidget);
+    expect(find.text('Cloud Save'), findsOneWidget);
     expect(find.text('Remote unavailable'), findsWidgets);
     expect(find.text('Restore cloud save'), findsOneWidget);
 

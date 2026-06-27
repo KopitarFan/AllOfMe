@@ -62,6 +62,10 @@ class _SettingsPrivacyDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _SettingsSectionTitle('Appearance'),
+                _ThemePalettePicker(
+                  selectedPalette: themePalette,
+                  onSelected: (palette) => Navigator.of(context).pop(palette),
+                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: Icon(
@@ -78,32 +82,83 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                         : _SettingsPrivacyAction.disableDarkMode,
                   ),
                 ),
-                const SizedBox(height: 10),
-                _ThemePalettePicker(
-                  selectedPalette: themePalette,
-                  onSelected: (palette) => Navigator.of(context).pop(palette),
+                const SizedBox(height: 18),
+                const _SettingsSectionTitle('App Lock'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(
+                    lockEnabled ? Icons.lock_outline : Icons.lock_open_outlined,
+                  ),
+                  title: const Text('App lock'),
+                  subtitle: Text(
+                    lockEnabled
+                        ? 'On - unlock required on launch and resume'
+                        : lockStatus.availabilityLabel,
+                  ),
+                  value: lockEnabled,
+                  onChanged: canChangeLock
+                      ? (value) => Navigator.of(context).pop(
+                          value
+                              ? _SettingsPrivacyAction.enableAppLock
+                              : _SettingsPrivacyAction.disableAppLock,
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Information'),
+                const _SettingsSectionTitle('Cloud Save'),
+                if (canManageCloudSave)
+                  _SettingsActionTile(
+                    icon: cloudSaveInfo.isRemote
+                        ? Icons.link_off_outlined
+                        : Icons.cloud_sync_outlined,
+                    title: cloudSaveInfo.isRemote
+                        ? 'Disconnect cloud save'
+                        : 'Connect cloud save',
+                    subtitle: cloudSaveInfo.isRemote
+                        ? '$cloudSaveStatus - ${cloudSaveInfo.accountLabel ?? cloudSaveInfo.location}'
+                        : 'Not connected - save and restore stay on this device.',
+                    onTap: () => Navigator.of(context).pop(
+                      cloudSaveInfo.isRemote
+                          ? _SettingsPrivacyAction.disconnectCloudSave
+                          : _SettingsPrivacyAction.connectCloudSave,
+                    ),
+                  ),
+                if (canManageCloudSave && cloudSaveInfo.isRemote)
+                  _SettingsActionTile(
+                    icon: Icons.link_outlined,
+                    title: 'Add another device',
+                    subtitle: 'Create a one-time code for a fresh install.',
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(_SettingsPrivacyAction.showCloudSaveLinkCode),
+                  ),
                 _SettingsActionTile(
-                  icon: Icons.privacy_tip_outlined,
-                  title: 'Privacy & storage',
-                  subtitle:
-                      'Review device storage, records, backups, and cloud-save status.',
+                  icon: Icons.cloud_upload_outlined,
+                  title: 'Save now',
+                  subtitle: cloudSaveInfo.isRemote
+                      ? 'Create an encrypted restore point from this device.'
+                      : 'Encrypt and create a local preview save from this device.',
                   onTap: () => Navigator.of(
                     context,
-                  ).pop(_SettingsPrivacyAction.showPrivacyStorageInfo),
+                  ).pop(_SettingsPrivacyAction.saveCloudSave),
                 ),
                 _SettingsActionTile(
-                  icon: Icons.feedback_outlined,
-                  title: 'Beta feedback',
-                  subtitle: 'Copy a report template or open support details.',
-                  onTap: () => Navigator.of(
-                    context,
-                  ).pop(_SettingsPrivacyAction.showBetaFeedback),
+                  icon: Icons.cloud_download_outlined,
+                  title: 'Restore cloud save',
+                  subtitle: cloudSaveMetadata == null
+                      ? cloudSaveErrorMessage ??
+                            (cloudSaveInfo.isRemote
+                                ? 'Save this device before restoring.'
+                                : 'Create a preview save before restoring.')
+                      : 'Latest save: ${_formatDateTime(cloudSaveMetadata!.createdAt)}.',
+                  onTap: cloudSaveMetadata == null
+                      ? null
+                      : () => Navigator.of(
+                          context,
+                        ).pop(_SettingsPrivacyAction.restoreCloudSave),
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Backup & restore'),
+                const _SettingsSectionTitle('Backup & Restore'),
                 _SettingsActionTile(
                   icon: Icons.file_download_outlined,
                   title: 'Export backup',
@@ -129,59 +184,6 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   ).pop(_SettingsPrivacyAction.pasteBackupJson),
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Cloud save'),
-                if (canManageCloudSave)
-                  _SettingsActionTile(
-                    icon: cloudSaveInfo.isRemote
-                        ? Icons.link_off_outlined
-                        : Icons.cloud_sync_outlined,
-                    title: cloudSaveInfo.isRemote
-                        ? 'Disconnect cloud save'
-                        : 'Connect cloud save',
-                    subtitle: cloudSaveInfo.isRemote
-                        ? '$cloudSaveStatus - ${cloudSaveInfo.accountLabel ?? cloudSaveInfo.location}'
-                        : 'Not connected - save and restore stay on this device.',
-                    onTap: () => Navigator.of(context).pop(
-                      cloudSaveInfo.isRemote
-                          ? _SettingsPrivacyAction.disconnectCloudSave
-                          : _SettingsPrivacyAction.connectCloudSave,
-                    ),
-                  ),
-                if (canManageCloudSave && cloudSaveInfo.isRemote)
-                  _SettingsActionTile(
-                    icon: Icons.link_outlined,
-                    title: 'Add another device',
-                    subtitle: 'Create a one-time link code.',
-                    onTap: () => Navigator.of(
-                      context,
-                    ).pop(_SettingsPrivacyAction.showCloudSaveLinkCode),
-                  ),
-                _SettingsActionTile(
-                  icon: Icons.cloud_upload_outlined,
-                  title: 'Save now',
-                  subtitle: cloudSaveInfo.isRemote
-                      ? 'Encrypt and save this device to cloud storage.'
-                      : 'Encrypt and create a local preview save from this device.',
-                  onTap: () => Navigator.of(
-                    context,
-                  ).pop(_SettingsPrivacyAction.saveCloudSave),
-                ),
-                _SettingsActionTile(
-                  icon: Icons.cloud_download_outlined,
-                  title: 'Restore cloud save',
-                  subtitle: cloudSaveMetadata == null
-                      ? cloudSaveErrorMessage ??
-                            (cloudSaveInfo.isRemote
-                                ? 'Save this device before restoring.'
-                                : 'Create a preview save before restoring.')
-                      : 'Latest save: ${_formatDateTime(cloudSaveMetadata!.createdAt)}.',
-                  onTap: cloudSaveMetadata == null
-                      ? null
-                      : () => Navigator.of(
-                          context,
-                        ).pop(_SettingsPrivacyAction.restoreCloudSave),
-                ),
-                const SizedBox(height: 18),
                 const _SettingsSectionTitle('Recovery'),
                 _SettingsActionTile(
                   icon: Icons.restore_from_trash_outlined,
@@ -194,29 +196,26 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   ).pop(_SettingsPrivacyAction.openRecentlyDeleted),
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Security'),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(
-                    lockEnabled ? Icons.lock_outline : Icons.lock_open_outlined,
-                  ),
-                  title: const Text('App lock'),
-                  subtitle: Text(
-                    lockEnabled
-                        ? 'On - unlock required on launch and resume'
-                        : lockStatus.availabilityLabel,
-                  ),
-                  value: lockEnabled,
-                  onChanged: canChangeLock
-                      ? (value) => Navigator.of(context).pop(
-                          value
-                              ? _SettingsPrivacyAction.enableAppLock
-                              : _SettingsPrivacyAction.disableAppLock,
-                        )
-                      : null,
+                const _SettingsSectionTitle('Information'),
+                _SettingsActionTile(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Privacy & storage',
+                  subtitle:
+                      'Review device storage, records, backups, and cloud-save status.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.showPrivacyStorageInfo),
+                ),
+                _SettingsActionTile(
+                  icon: Icons.feedback_outlined,
+                  title: 'Beta feedback',
+                  subtitle: 'Copy a report template or open support details.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.showBetaFeedback),
                 ),
                 const SizedBox(height: 18),
-                const _SettingsSectionTitle('Demo data'),
+                const _SettingsSectionTitle('Reset'),
                 _SettingsActionTile(
                   icon: Icons.auto_graph_outlined,
                   title: hasSampleData
@@ -238,8 +237,6 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                       context,
                     ).pop(_SettingsPrivacyAction.clearSampleData),
                   ),
-                const SizedBox(height: 18),
-                const _SettingsSectionTitle('Reset'),
                 _SettingsActionTile(
                   icon: Icons.delete_forever_outlined,
                   title: 'Clear all local data',
@@ -540,6 +537,10 @@ class _CloudSaveConnectionDialogState
 
   @override
   Widget build(BuildContext context) {
+    final modeDescription = _mode == _CloudSaveConnectionMode.startNew
+        ? 'Use the default All Of Me Cloud server, or change the URL for a self-hosted server.'
+        : 'Enter a one-time code from another connected device.';
+
     return AlertDialog(
       title: const Row(
         children: [
@@ -549,92 +550,120 @@ class _CloudSaveConnectionDialogState
         ],
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SegmentedButton<_CloudSaveConnectionMode>(
-              segments: const [
-                ButtonSegment<_CloudSaveConnectionMode>(
-                  value: _CloudSaveConnectionMode.startNew,
-                  label: Text('New'),
-                  icon: Icon(Icons.cloud_sync_outlined),
+        constraints: BoxConstraints(
+          maxWidth: 520,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.68,
+        ),
+        child: Scrollbar(
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SettingsNotice(
+                  icon: _mode == _CloudSaveConnectionMode.startNew
+                      ? Icons.cloud_done_outlined
+                      : Icons.link_outlined,
+                  title: _mode == _CloudSaveConnectionMode.startNew
+                      ? 'All Of Me Cloud is ready'
+                      : 'Link an existing cloud save',
+                  message: modeDescription,
                 ),
-                ButtonSegment<_CloudSaveConnectionMode>(
-                  value: _CloudSaveConnectionMode.linkExisting,
-                  label: Text('Existing'),
-                  icon: Icon(Icons.link_outlined),
+                const SizedBox(height: 14),
+                SegmentedButton<_CloudSaveConnectionMode>(
+                  segments: const [
+                    ButtonSegment<_CloudSaveConnectionMode>(
+                      value: _CloudSaveConnectionMode.startNew,
+                      label: Text('New save'),
+                      icon: Icon(Icons.cloud_sync_outlined),
+                    ),
+                    ButtonSegment<_CloudSaveConnectionMode>(
+                      value: _CloudSaveConnectionMode.linkExisting,
+                      label: Text('Link device'),
+                      icon: Icon(Icons.link_outlined),
+                    ),
+                  ],
+                  selected: {_mode},
+                  onSelectionChanged: _isSubmitting
+                      ? null
+                      : (selection) {
+                          setState(() {
+                            _mode = selection.single;
+                            _errorText = null;
+                          });
+                        },
                 ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _baseUrlController,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Server URL',
+                    hintText: officialCloudSaveBaseUrl,
+                    helperText:
+                        'Already filled for All Of Me Cloud. Change only for another server.',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _accountLabelController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Account label',
+                    hintText: officialCloudSaveAccountLabel,
+                    helperText: 'Shown on this device only.',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _deviceLabelController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Device label',
+                    hintText: 'This device',
+                    helperText: 'Helps you recognize this device later.',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_mode == _CloudSaveConnectionMode.linkExisting)
+                  TextField(
+                    controller: _linkCodeController,
+                    textInputAction: TextInputAction.done,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Link code',
+                      hintText: 'AOM-12345-ABCDE',
+                      helperText:
+                          'Create this code on a device already connected to Cloud Save.',
+                    ),
+                    onSubmitted: (_) => _submit(),
+                  )
+                else
+                  TextField(
+                    controller: _accessTokenController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Access token (optional)',
+                      hintText: 'Leave blank to register this device',
+                      helperText:
+                          'Advanced: paste a token only for a manual or third-party setup.',
+                    ),
+                    onSubmitted: (_) => _submit(),
+                  ),
+                if (_errorText != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _errorText!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
               ],
-              selected: {_mode},
-              onSelectionChanged: _isSubmitting
-                  ? null
-                  : (selection) {
-                      setState(() {
-                        _mode = selection.single;
-                        _errorText = null;
-                      });
-                    },
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _baseUrlController,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Server URL',
-                hintText: officialCloudSaveBaseUrl,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _accountLabelController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Account label',
-                hintText: officialCloudSaveAccountLabel,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _deviceLabelController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Device label',
-                hintText: 'This device',
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_mode == _CloudSaveConnectionMode.linkExisting)
-              TextField(
-                controller: _linkCodeController,
-                textInputAction: TextInputAction.done,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Link code',
-                  hintText: 'AOM-12345-ABCDE',
-                ),
-                onSubmitted: (_) => _submit(),
-              )
-            else
-              TextField(
-                controller: _accessTokenController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Access token (optional)',
-                  hintText: 'Leave blank to register this device',
-                ),
-                onSubmitted: (_) => _submit(),
-              ),
-            if (_errorText != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _errorText!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
       actions: [
@@ -649,7 +678,11 @@ class _CloudSaveConnectionDialogState
                   dimension: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Connect'),
+              : Text(
+                  _mode == _CloudSaveConnectionMode.startNew
+                      ? 'Connect'
+                      : 'Link device',
+                ),
         ),
       ],
     );
@@ -677,6 +710,13 @@ class _CloudSaveDeviceLinkCodeDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const _SettingsNotice(
+              icon: Icons.phone_iphone_outlined,
+              title: 'Use this on the new device',
+              message:
+                  'Open Connect cloud save, choose Link device, enter this code, then restore with the recovery key.',
+            ),
+            const SizedBox(height: 16),
             Center(
               child: SelectableText(
                 linkCode.code,
@@ -705,7 +745,7 @@ class _CloudSaveDeviceLinkCodeDialog extends StatelessWidget {
             Navigator.of(context).pop();
           },
           icon: const Icon(Icons.copy_outlined),
-          label: const Text('Copy'),
+          label: const Text('Copy code'),
         ),
       ],
     );
@@ -769,18 +809,35 @@ class _ThemePalettePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Theme', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: AppThemePalette.values.map((palette) {
-            return _ThemePaletteSwatch(
-              palette: palette,
-              selected: palette == selectedPalette,
-              onSelected: () => onSelected(palette),
-            );
-          }).toList(),
+        Row(
+          children: [
+            Text('Theme', style: Theme.of(context).textTheme.labelLarge),
+            const Spacer(),
+            Text(
+              selectedPalette.label,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 48,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final palette in AppThemePalette.values) ...[
+                  _ThemePaletteSwatch(
+                    palette: palette,
+                    selected: palette == selectedPalette,
+                    onSelected: () => onSelected(palette),
+                  ),
+                  if (palette != AppThemePalette.values.last)
+                    const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -806,52 +863,57 @@ class _ThemePaletteSwatch extends StatelessWidget {
 
     return Tooltip(
       message: selected ? '${palette.label} selected' : palette.label,
-      child: InkWell(
-        onTap: onSelected,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          key: ValueKey('theme-palette-${palette.id}'),
-          width: 160,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ThemePaletteGradientPreview(
-                key: ValueKey('theme-palette-preview-${palette.id}'),
-                palette: palette,
-                lightScheme: lightScheme,
-                darkScheme: darkScheme,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: palette.label,
+        child: InkWell(
+          onTap: onSelected,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            key: ValueKey('theme-palette-${palette.id}'),
+            width: 48,
+            height: 44,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.outlineVariant,
+                width: selected ? 2 : 1,
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      palette.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _ThemePaletteGradientPreview(
+                    key: ValueKey('theme-palette-preview-${palette.id}'),
+                    palette: palette,
+                    lightScheme: lightScheme,
+                    darkScheme: darkScheme,
+                    height: 36,
+                    showDots: false,
+                  ),
+                ),
+                if (selected)
+                  Align(
+                    alignment: Alignment.center,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.88),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 20,
+                        color: colorScheme.primary,
+                      ),
                     ),
                   ),
-                  if (selected)
-                    Icon(
-                      Icons.check_circle,
-                      size: 18,
-                      color: colorScheme.primary,
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -865,11 +927,15 @@ class _ThemePaletteGradientPreview extends StatelessWidget {
     required this.palette,
     required this.lightScheme,
     required this.darkScheme,
+    this.height = 82,
+    this.showDots = true,
   });
 
   final AppThemePalette palette;
   final ColorScheme lightScheme;
   final ColorScheme darkScheme;
+  final double height;
+  final bool showDots;
 
   @override
   Widget build(BuildContext context) {
@@ -877,7 +943,7 @@ class _ThemePaletteGradientPreview extends StatelessWidget {
 
     return Container(
       key: ValueKey('theme-palette-gradient-${palette.id}'),
-      height: 82,
+      height: height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: outline),
@@ -898,38 +964,42 @@ class _ThemePaletteGradientPreview extends StatelessWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(7),
-        child: Align(
-          alignment: Alignment.bottomRight,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: lightScheme.surface.withValues(alpha: 0.84),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: lightScheme.outlineVariant),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ThemePaletteDot(
-                    key: ValueKey('theme-palette-seed-${palette.id}'),
-                    color: palette.seedColor,
+      child: showDots
+          ? Padding(
+              padding: const EdgeInsets.all(7),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: lightScheme.surface.withValues(alpha: 0.84),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: lightScheme.outlineVariant),
                   ),
-                  _ThemePaletteDot(color: lightScheme.primary),
-                  _ThemePaletteDot(color: lightScheme.secondary),
-                  _ThemePaletteDot(color: darkScheme.primaryContainer),
-                  _ThemePaletteDot(
-                    key: ValueKey('theme-palette-background-${palette.id}'),
-                    color: palette.darkScaffold,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ThemePaletteDot(
+                          key: ValueKey('theme-palette-seed-${palette.id}'),
+                          color: palette.seedColor,
+                        ),
+                        _ThemePaletteDot(color: lightScheme.primary),
+                        _ThemePaletteDot(color: lightScheme.secondary),
+                        _ThemePaletteDot(color: darkScheme.primaryContainer),
+                        _ThemePaletteDot(
+                          key: ValueKey(
+                            'theme-palette-background-${palette.id}',
+                          ),
+                          color: palette.darkScaffold,
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
-      ),
+            )
+          : null,
     );
   }
 }
@@ -1324,77 +1394,96 @@ class _CloudSaveRecoveryKeyDialogState
         ],
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _recoveryKeyController,
-              autofocus: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              keyboardType: TextInputType.visiblePassword,
-              obscureText: _obscureText,
-              smartDashesType: SmartDashesType.disabled,
-              smartQuotesType: SmartQuotesType.disabled,
-              textCapitalization: TextCapitalization.none,
-              decoration: InputDecoration(
-                labelText: 'Recovery key',
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                  icon: Icon(
-                    _obscureText
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+        constraints: BoxConstraints(
+          maxWidth: 520,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+        ),
+        child: Scrollbar(
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isSaveMode) ...[
+                  const _SettingsNotice(
+                    icon: Icons.lock_outline,
+                    title: 'Keep this key safe',
+                    message:
+                        'You will need it to restore on this or another device. All Of Me cannot recover it for you.',
                   ),
-                  tooltip: _obscureText
-                      ? 'Show recovery key'
-                      : 'Hide recovery key',
+                  const SizedBox(height: 14),
+                ],
+                Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _recoveryKeyController,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.visiblePassword,
+                  obscureText: _obscureText,
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
+                  textCapitalization: TextCapitalization.none,
+                  decoration: InputDecoration(
+                    labelText: 'Recovery key',
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                      icon: Icon(
+                        _obscureText
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      tooltip: _obscureText
+                          ? 'Show recovery key'
+                          : 'Hide recovery key',
+                    ),
+                  ),
+                  onSubmitted: (_) {
+                    if (!_isSaveMode) {
+                      _submit();
+                    }
+                  },
                 ),
-              ),
-              onSubmitted: (_) {
-                if (!_isSaveMode) {
-                  _submit();
-                }
-              },
-            ),
-            if (_isSaveMode) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _confirmController,
-                autocorrect: false,
-                enableSuggestions: false,
-                keyboardType: TextInputType.visiblePassword,
-                obscureText: _obscureText,
-                smartDashesType: SmartDashesType.disabled,
-                smartQuotesType: SmartQuotesType.disabled,
-                textCapitalization: TextCapitalization.none,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm recovery key',
+                if (_isSaveMode) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _confirmController,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    keyboardType: TextInputType.visiblePassword,
+                    obscureText: _obscureText,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm recovery key',
+                    ),
+                    onSubmitted: (_) => _submit(),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  'Use at least $cloudSaveRecoveryKeyMinLength characters.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                onSubmitted: (_) => _submit(),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Text(
-              'Use at least $cloudSaveRecoveryKeyMinLength characters.',
-              style: Theme.of(context).textTheme.bodySmall,
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
             ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
       actions: [

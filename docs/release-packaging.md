@@ -7,7 +7,7 @@ This is the iOS/TestFlight packaging checklist for All Of Me.
 - App display name: All Of Me
 - Bundle identifier: `com.allofme.allofme`
 - Version: `1.0.0`
-- Build: `14`
+- Build: `15`
 - Minimum iOS deployment target: iOS 13.0
 - Privacy posture: local-first, no tracking, optional encrypted Cloud Save
 
