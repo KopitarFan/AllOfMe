@@ -15,6 +15,7 @@ capacity signals.
 The production runbook already includes:
 
 - External API health endpoint: `https://api.allofmeapp.com/healthz`
+- Cronitor external monitoring for API health, TLS expiry, and backup heartbeat.
 - Docker and Caddy logs on the host.
 - Structured API `requestId` and `errorId` values for support lookup.
 - Admin stats for accounts, devices, saves, payload bytes, package-file bytes,
@@ -51,25 +52,26 @@ Capacity tripwires:
 
 ## Tool Options
 
-### Better Stack
+### Cronitor
 
-Use for: quickest all-in-one 1.0 monitoring.
+Use for: selected 1.0 monitor for cron, uptime, heartbeat, TLS checks, and a
+simple status page.
 
 Current useful facts from pricing:
 
-- Free personal tier includes 10 monitors/heartbeats and 1 status page.
-- Free tier includes email/Slack alerts.
-- Free tier includes small log, trace, and metrics allowances.
-- Paid incident-management and telemetry plans are available later.
+- Free Hacker plan includes 5 monitors, email/Slack alerts, and a basic status
+  page.
+- Business pricing starts from per-monitor and per-user usage.
 
 Fit for All Of Me:
 
-- Good first choice for external `/healthz` checks, TLS checks, backup heartbeat,
-  and a simple public/private status page.
-- Can receive logs later, but we should avoid shipping sensitive request bodies.
-- Adds a third-party processor for operational logs if log shipping is enabled.
+- Chosen for 1.0 because one service can cover API health checks, response-body
+  assertions, TLS expiry, and backup job heartbeats.
+- Good fit for checking `GET /healthz` from outside the VPS with status and body
+  assertions.
+- Keeps the first monitoring setup small and avoids mobile telemetry.
 
-Source: <https://betterstack.com/pricing>
+Source: <https://cronitor.io/pricing>
 
 ### Healthchecks.io
 
@@ -84,27 +86,31 @@ Current useful facts from pricing:
 Fit for All Of Me:
 
 - Excellent for `allofme-backup` success/failure heartbeats.
-- Pair it with a separate uptime monitor if we do not use Better Stack.
+- Pair it with a separate uptime monitor if Cronitor is replaced later.
 - Very low complexity.
 
 Source: <https://healthchecks.io/pricing/>
 
-### Cronitor
+### Better Stack
 
-Use for: cron, uptime, heartbeat, and simple status-page monitoring.
+Use for: broader hosted observability if we later want more than the Cronitor
+checks.
 
 Current useful facts from pricing:
 
-- Free Hacker plan includes 5 monitors, email/Slack alerts, and a basic status
-  page.
-- Business pricing starts from per-monitor and per-user usage.
+- Free personal tier includes 10 monitors/heartbeats and 1 status page.
+- Free tier includes email/Slack alerts.
+- Free tier includes small log, trace, and metrics allowances.
+- Paid incident-management and telemetry plans are available later.
 
 Fit for All Of Me:
 
-- Similar role to Better Stack/Healthchecks.
-- Strong if we want one product for uptime plus backup jobs, with less log focus.
+- Was considered for the first monitor, but the free tier no longer fit the
+  response-body keyword check we wanted for `/healthz`.
+- Can receive logs later, but we should avoid shipping sensitive request bodies.
+- Adds a third-party processor for operational logs if log shipping is enabled.
 
-Source: <https://cronitor.io/pricing>
+Source: <https://betterstack.com/pricing>
 
 ### Sentry
 
@@ -162,24 +168,27 @@ Source: <https://github.com/louislam/uptime-kuma>
 
 ## Recommendation
 
-For 1.0, use one external hosted monitor, not a full observability stack.
+For 1.0, use Cronitor as the external hosted monitor, not a full observability
+stack.
 
-Recommended first setup:
+Configured first setup:
 
-- Better Stack Free for:
-  - `https://api.allofmeapp.com/healthz`
-  - TLS expiry
-  - backup heartbeat
-  - optional status page
+- Cronitor for:
+  - API health: `GET https://api.allofmeapp.com/healthz`
+  - Health assertions: status `200` and body contains `{"ok":true}`
+  - TLS expiry for `api.allofmeapp.com`
+  - Daily backup heartbeat for `allofme-backup`
+  - Optional status page
 - A small host-side script or cron output that records:
   - disk usage
   - newest backup age
   - `docker compose ps`
   - `node dist/admin-cli.js stats --json`
 
-If Better Stack feels too broad, use Healthchecks.io for backup heartbeat and a
-separate simple uptime monitor. The important bit is that at least one monitor is
-external to the VPS.
+If Cronitor becomes too limiting later, use Healthchecks.io for backup heartbeat
+plus a separate uptime monitor, or move to Better Stack/Grafana Cloud when log or
+metrics dashboards become worth the additional setup. The important bit is that
+at least one monitor remains external to the VPS.
 
 Defer for later:
 
@@ -221,15 +230,16 @@ Implemented in the repository:
 - Backup heartbeat URL placeholders for `/etc/allofme-backup.env`.
 - Host-side ops summary script at `scripts/allofme_ops_summary.sh`.
 
-Manual production setup still needed:
+Production setup checklist:
 
 1. Copy `scripts/allofme_ops_summary.sh` to
    `/usr/local/sbin/allofme-ops-summary` on the VPS.
-2. Configure one external uptime check for `/healthz`.
-3. Configure one external TLS expiry check.
-4. Configure one backup heartbeat URL and add it to `/etc/allofme-backup.env`.
-5. Update `/usr/local/sbin/allofme-backup` to ping the heartbeat after success
-   and optionally after failure.
+2. Configure one Cronitor external uptime check for `/healthz`.
+3. Configure one Cronitor TLS expiry check.
+4. Configure one Cronitor backup heartbeat URL and add it to
+   `/etc/allofme-backup.env`.
+5. Update `/usr/local/sbin/allofme-backup` to ping the Cronitor heartbeat after
+   success and optionally after failure.
 
 That gives us useful alerting without changing app behavior or adding mobile
 telemetry.

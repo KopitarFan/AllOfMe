@@ -61,6 +61,8 @@ Screenshot planning lives in `docs/screenshot-checklist.md`.
 - SKU: `allofme-ios`
 - Privacy Policy URL: publish `docs/privacy-policy.md` through GitHub Pages or another public site
 - Support URL: publish `docs/support.md` through GitHub Pages or another public site
+- Support email: `support@allofmeapp.com`
+- Bug report email: `bugreports@allofmeapp.com`
 - Age rating notes: no user-generated public sharing, no required account, no live network sync in this build
 - Privacy summary: data is stored locally on the device by default; backups, imports, profile images, Cloud Save, and app lock are explicit user actions
 

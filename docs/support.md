@@ -12,12 +12,15 @@ For TestFlight builds:
 - Use TestFlight's built-in feedback feature when reporting beta issues.
 - In the app, open Settings & privacy and choose Beta feedback to copy a
   report template with helpful diagnostic details.
+- Email support requests to `support@allofmeapp.com`.
+- Email reproducible bugs, crashes, and broken workflows to
+  `bugreports@allofmeapp.com`.
 - If you have access to the GitHub repository, open an issue:
   <https://github.com/KopitarFan/AllOfMe/issues>
 
-Before external TestFlight testing or App Store release, add a public support
-email or contact form here so testers and customers can reach support without
-needing GitHub access.
+Use email for anything that should not require GitHub access. Do not include
+backup files, recovery keys, member details, timeline notes, or screenshots with
+sensitive information unless you intentionally choose to share them for support.
 
 ## Helpful Details To Include
 
@@ -66,9 +69,9 @@ To protect local data:
 Disconnecting Cloud Save on a device clears that device's saved Cloud Save
 session and token. It does not automatically delete encrypted restore points
 already stored on the configured server. To request deletion of All Of Me Cloud
-data, contact support and include the relevant Cloud Save account/device details
-or support reference if available. For self-hosted or third-party servers, contact
-that server operator.
+data, email `support@allofmeapp.com` and include the relevant Cloud Save
+account/device details or support reference if available. For self-hosted or
+third-party servers, contact that server operator.
 
 ## Privacy
 

@@ -67,11 +67,11 @@ For monitoring/tooling options and the recommended 1.0 observability slice, see
 
 ## Observability Quick Setup
 
-Use an external hosted monitor for production checks. The monitor must run
-outside the Vultr host so it can alert when the VPS, Docker, Caddy, DNS, or TLS
-is broken.
+Use Cronitor as the external hosted monitor for production checks. The monitor
+must run outside the Vultr host so it can alert when the VPS, Docker, Caddy,
+DNS, or TLS is broken.
 
-Minimum 1.0 monitors:
+Minimum 1.0 Cronitor monitors:
 
 - HTTP check: `GET https://api.allofmeapp.com/healthz`
 - TLS certificate expiry check: `api.allofmeapp.com`
@@ -100,7 +100,7 @@ admin stats, recent API errors, and the backup log tail. It is read-only and doe
 not print encrypted package contents, recovery keys, request bodies, member
 names, notes, or profile images.
 
-If a monitor asks for the expected check interval, use the backup cron interval
+If Cronitor asks for the expected check interval, use the backup cron interval
 plus a grace period. For a daily backup, alert when no heartbeat arrives for
 `26-30` hours.
 
@@ -375,10 +375,10 @@ BACKUP_HEARTBEAT_FAILURE_URL=
 
 The secret access key belongs in `/root/.aws/credentials`, not in the repo.
 
-`BACKUP_HEARTBEAT_URL` should be the success ping URL from the monitoring
-provider. `BACKUP_HEARTBEAT_FAILURE_URL` is optional; use it only if the provider
-supports explicit failure pings. Keep both URLs in `/etc/allofme-backup.env`,
-not in the repo.
+`BACKUP_HEARTBEAT_URL` should be the success ping URL from Cronitor.
+`BACKUP_HEARTBEAT_FAILURE_URL` is optional; use it only if the configured
+Cronitor monitor supports explicit failure pings. Keep both URLs in
+`/etc/allofme-backup.env`, not in the repo.
 
 The production backup script should ping the monitor after success and, when
 configured, after failure. The heartbeat must not change the backup exit status:
@@ -420,7 +420,7 @@ The scheduled backup should be in `/etc/cron.d/allofme-backup`. Check its log:
 sudo tail -120 /var/log/allofme-backup.log
 ```
 
-After the heartbeat is configured, run one manual backup and confirm the monitor
+After the heartbeat is configured, run one manual backup and confirm Cronitor
 received the ping:
 
 ```sh
