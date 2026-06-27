@@ -44,10 +44,8 @@ Use these once GitHub Pages is enabled from `main` / `docs`.
 - Privacy Policy URL: `https://kopitarfan.github.io/AllOfMe/privacy-policy.html`
 - Support URL: `https://kopitarfan.github.io/AllOfMe/support.html`
 - Marketing URL: optional; leave blank for first TestFlight
-
-Before external TestFlight or App Store release, update `docs/support.md` with a
-public support email or contact form. GitHub Issues alone may not be enough for
-customers who do not have GitHub access.
+- Support email: `support@allofmeapp.com`
+- Bug report email: `bugreports@allofmeapp.com`
 
 ## Product Page Copy
 
@@ -224,9 +222,9 @@ Rationale:
   the configured server.
 - All Of Me Cloud does not receive the recovery key and is not designed to
   decrypt package contents.
-- TestFlight feedback, GitHub Issues, email, or support requests may send
-  information only when the user intentionally provides it outside normal app
-  operation.
+- TestFlight feedback, GitHub Issues, support email, or bug-report email may
+  include information only when the user intentionally provides it outside normal
+  app operation.
 
 Revisit before submission if any of these change:
 

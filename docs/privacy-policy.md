@@ -178,4 +178,5 @@ are released.
 
 ## Contact
 
-For support, see [Support](support.md).
+For support, email `support@allofmeapp.com` or see [Support](support.md).
+For bug reports, email `bugreports@allofmeapp.com`.
