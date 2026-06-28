@@ -1,6 +1,6 @@
 # All Of Me App Store Metadata Draft
 
-Last updated: June 26, 2026
+Last updated: June 28, 2026
 
 This draft is for App Store Connect and TestFlight setup. It is written for the
 current local-first iOS build: no required account, no required server
@@ -31,19 +31,19 @@ Sources:
 - Bundle ID: `com.allofme.allofme`
 - SKU: `allofme-ios`
 - Primary language: `English (U.S.)`
-- Primary category: `Lifestyle`
-- Secondary category: none for first submission
+- Primary category: `Health & Fitness`
+- Secondary category: `Lifestyle`
 - Content rights: app contains only original or licensed content
 - License agreement: Apple's Standard EULA
 - Pricing: free for initial TestFlight; App Store pricing TBD
 
 ## URLs
 
-Use these once GitHub Pages is enabled from `main` / `docs`.
+Use these once the static website in `site/` is deployed.
 
-- Privacy Policy URL: `https://kopitarfan.github.io/AllOfMe/privacy-policy.html`
-- Support URL: `https://kopitarfan.github.io/AllOfMe/support.html`
-- Marketing URL: optional; leave blank for first TestFlight
+- Privacy Policy URL: `https://allofmeapp.com/privacy-policy.html`
+- Support URL: `https://allofmeapp.com/support.html`
+- Marketing URL: `https://allofmeapp.com/`
 - Support email: `support@allofmeapp.com`
 - Bug report email: `bugreports@allofmeapp.com`
 
@@ -52,13 +52,13 @@ Use these once GitHub Pages is enabled from `main` / `docs`.
 ### Subtitle
 
 ```text
-Local-first system tracking
+IFS, DID, OSDD tracking
 ```
 
 ### Promotional Text
 
 ```text
-Private system tracking built around local data ownership, optional encrypted backups, member organization, fronting history, and on-device insights.
+A private mental health tool for IFS, DID, and OSDD work, with member tracking, fronting history, notes, insights, and local-first backups.
 ```
 
 ### Short Description
@@ -67,15 +67,15 @@ Use this for informal notes, repository descriptions, or screenshot planning.
 App Store Connect does not have a separate "short description" field for iOS.
 
 ```text
-Private, local-first tracking for members, groups, fronting history, encrypted backups, and insights.
+Private, local-first mental health tool for IFS, DID, and OSDD-informed parts/system work: members, fronting, notes, insights, and backups.
 ```
 
 ### Full Description
 
 ```text
-All Of Me is a private, local-first space for system tracking.
+All Of Me is a private, local-first mental health tool for parts and system work, including IFS-informed self-reflection and DID/OSDD-informed organization.
 
-Create members, organize them into groups, track who is fronting, add timeline notes, and review local insights without needing an account or a network connection.
+Create members or parts, organize them into groups, track who is fronting, add timeline notes, and review local insights without needing an account or a network connection.
 
 The app is designed around device-owned data. Your local device is the source of truth, and core workflows continue to work offline. Export, import, and optional Cloud Save are explicit actions, so you stay in control of backups and portability.
 
@@ -93,6 +93,8 @@ Features in this release:
 - Clear all local data for the current device.
 
 All Of Me does not include required accounts, live sync, collaboration, advertising, or analytics in this build.
+
+All Of Me is a self-management and journaling tool. It does not provide diagnosis, treatment, therapy, crisis support, or clinical advice. If you need medical or mental health care, contact a qualified professional or local emergency services.
 ```
 
 ### Keywords
@@ -100,10 +102,10 @@ All Of Me does not include required accounts, live sync, collaboration, advertis
 Draft under Apple's 100-byte limit. Do not add competitor app names.
 
 ```text
-plural,system,journal,fronting,members,groups,tracking,privacy,backup,local
+ifs,did,osdd,parts,system,journal,fronting,members,tracking,privacy,backup,mental
 ```
 
-Approximate byte count: 75.
+Approximate byte count: 81.
 
 ## What's New
 
@@ -118,7 +120,7 @@ Initial release.
 ### Beta App Description
 
 ```text
-All Of Me is a local-first system tracking app. This beta focuses on private on-device setup, member and group management, fronting history, local insights, backup import/export, optional encrypted Cloud Save, and optional app lock.
+All Of Me is a local-first mental health tool for IFS, DID, and OSDD-informed parts/system work. This beta focuses on private on-device setup, member and group management, fronting history, local insights, backup import/export, optional encrypted Cloud Save, and optional app lock.
 ```
 
 ### What To Test
@@ -146,7 +148,7 @@ Fill in the real contact details in App Store Connect.
 Review notes:
 
 ```text
-All Of Me is local-first and does not require login. The reviewer can start fresh or select "Use demo data" during first-run setup to see members, groups, timeline, and insights. Optional Cloud Save can be tested from Settings & Privacy with the default All Of Me Cloud server; no demo account is required. App lock can be enabled from the main-screen lock button or Settings & Privacy and uses Face ID/device passcode where supported.
+All Of Me is a local-first mental health tool for IFS, DID, and OSDD-informed parts/system work. It does not require login and does not provide diagnosis, treatment, therapy, crisis support, or clinical advice. The reviewer can start fresh or select "Use demo data" during first-run setup to see members, groups, timeline, and insights. Optional Cloud Save can be tested from Settings & Privacy with the default All Of Me Cloud server; no demo account is required. App lock can be enabled from the main-screen lock button or Settings & Privacy and uses Face ID/device passcode where supported.
 ```
 
 ## App Privacy Draft
@@ -251,18 +253,19 @@ Recommended answers for the current build:
 - Messaging or chat: no.
 - Advertising: no.
 - Public user-generated content: no.
-- Medical or treatment information: no.
-- Health/wellness topics: choose carefully.
+- Medical or treatment information: no, as long as the copy stays focused on
+  tracking, journaling, and self-management rather than medical guidance.
+- Health/wellness topics: yes.
 
 Rating expectation:
 
-- If every content/capability answer is "none/no", Apple may assign 4+.
-- If Apple treats system tracking as a health/wellness topic, the rating may be
-  higher. Based on Apple's current age-rating definitions, health and wellness
-  topics can fall under 9+.
+- Because the app is now positioned as a mental health tool, expect Apple to
+  treat it as a health/wellness app. Based on Apple's current age-rating
+  definitions, health and wellness topics can fall under 9+.
 
 Do not describe All Of Me as medical treatment, therapy, diagnosis, or crisis
-support. The app is for private organization and tracking.
+support. It is okay to describe the app as a private mental health tool for IFS,
+DID, and OSDD-informed organization, tracking, journaling, and self-management.
 
 ## Accessibility Nutrition Draft
 

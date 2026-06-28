@@ -1,12 +1,13 @@
 # All Of Me Privacy Policy
 
-Last updated: June 26, 2026
+Last updated: June 28, 2026
 
-All Of Me is a local-first app for private system tracking. The current build is
-designed so the current device is the source of truth: core app data is stored
-on the device, and core workflows do not require an account, server connection,
-or network access. Users can optionally connect Cloud Save to store encrypted
-manual restore points on All Of Me Cloud or another compatible server.
+All Of Me is a local-first mental health tool for private IFS, DID, and
+OSDD-informed parts and system work. The current build is designed so the
+current device is the source of truth: core app data is stored on the device,
+and core workflows do not require an account, server connection, or network
+access. Users can optionally connect Cloud Save to store encrypted manual
+restore points on All Of Me Cloud or another compatible server.
 
 ## Summary
 

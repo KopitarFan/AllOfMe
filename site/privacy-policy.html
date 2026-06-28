@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Privacy Policy | All Of Me</title>
+    <meta name="description" content="All Of Me privacy policy for local data, optional encrypted Cloud Save, support, and deletion.">
+    <link rel="icon" href="assets/brand/app-icon.png">
+    <link rel="apple-touch-icon" href="assets/brand/app-icon.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="index.html">
+          <img src="assets/brand/app-icon.png" alt="">
+          <span>All Of Me</span>
+        </a>
+        <div class="nav-links">
+          <a href="docs/">Docs</a>
+          <a href="privacy-policy.html" aria-current="page">Privacy</a>
+          <a href="support.html">Support</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Privacy policy</p>
+          <h1>Your device comes first.</h1>
+          <p>
+            Last updated: June 28, 2026. All Of Me is designed so core app data
+            stays on the current device by default. Cloud Save is optional,
+            encrypted before upload, and controlled by explicit save and restore
+            actions.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap content">
+          <article class="article">
+            <h2 id="summary">Summary</h2>
+            <ul>
+              <li>Core app data is stored locally on the device by default.</li>
+              <li>Cloud Save is optional and user-initiated.</li>
+              <li>Cloud Save packages are encrypted on the device before upload.</li>
+              <li>The Cloud Save recovery key is not sent to All Of Me Cloud.</li>
+              <li>All Of Me does not use third-party advertising.</li>
+              <li>All Of Me does not track users across apps or websites.</li>
+              <li>All Of Me does not currently include analytics.</li>
+            </ul>
+
+            <h2>Data stored by the app</h2>
+            <p>
+              All Of Me stores the information a user enters or chooses inside
+              the app. This may include system profile details, member names,
+              roles, notes, colors, groups, profile images, fronting state,
+              fronting sessions, timeline entries, recently deleted items, local
+              settings, local backups, and Cloud Save connection settings.
+            </p>
+            <p>
+              On iOS and other device builds, this data is stored in app-owned
+              local storage, including a local SQLite database and app-owned
+              image and backup files.
+            </p>
+
+            <h2>Optional Cloud Save</h2>
+            <p>
+              Cloud Save is a manual backup and restore feature. It is not live
+              sync, and it does not make the server the source of truth. A user
+              must connect Cloud Save and choose to save or restore.
+            </p>
+            <p>
+              When a user connects Cloud Save to All Of Me Cloud, the service
+              may process and store encrypted Cloud Save packages, save metadata,
+              random account and device identifiers, hashed device access
+              tokens, link-code metadata, and standard service logs such as
+              request time, request path, status code, IP address, request ID,
+              and error ID.
+            </p>
+            <p>
+              The recovery key used to encrypt and decrypt a Cloud Save package
+              is entered on the device and is not sent to All Of Me Cloud. The
+              server is not designed to decrypt Cloud Save package contents.
+            </p>
+
+            <h2>Photos and profile images</h2>
+            <p>
+              All Of Me may request access to the photo library so a user can
+              choose a member profile image. Chosen images are copied into
+              app-owned local storage and may be included in user-created
+              backups or encrypted Cloud Save packages.
+            </p>
+
+            <h2>App lock and biometrics</h2>
+            <p>
+              All Of Me may use Face ID or the device passcode to unlock local
+              app data when app lock is enabled. Biometric authentication is
+              handled by the operating system. All Of Me does not receive or
+              store Face ID biometric data.
+            </p>
+
+            <h2>Backups, imports, and sharing</h2>
+            <p>
+              Users can export a readable JSON backup and import that backup
+              later. Exported backup files are controlled by the user after
+              export. If a user shares a backup through the system share sheet,
+              saves it somewhere else, or sends it to someone else, that copy is
+              outside All Of Me's app-owned storage.
+            </p>
+
+            <h2>Retention and deletion</h2>
+            <p>
+              Local app data remains on the device until the user deletes it,
+              clears local app data inside All Of Me, removes specific records,
+              deletes exported backups, or uninstalls the app.
+            </p>
+            <p>
+              Disconnecting Cloud Save removes the saved Cloud Save session and
+              access token from the current device. It does not automatically
+              delete encrypted restore points already stored on the configured
+              server. Users can request deletion of All Of Me Cloud data through
+              support.
+            </p>
+
+            <h2>Third parties</h2>
+            <p>
+              The current app build does not include third-party advertising,
+              third-party analytics, or a bundled third-party sync service. If a
+              user configures a self-hosted or third-party Cloud Save server,
+              that server operator's privacy and security practices apply.
+            </p>
+
+            <h2>Security</h2>
+            <p>
+              All Of Me is designed to keep app data local by default and can
+              hide local app data behind device authentication when app lock is
+              enabled. No storage or security system can be guaranteed to be
+              perfect, especially once a user exports files, shares backup files,
+              connects a server, or stores recovery keys outside the app.
+            </p>
+
+            <h2>Contact</h2>
+            <p>
+              For support, email
+              <a href="mailto:support@allofmeapp.com">support@allofmeapp.com</a>.
+              For bug reports, email
+              <a href="mailto:bugreports@allofmeapp.com">bugreports@allofmeapp.com</a>.
+            </p>
+          </article>
+
+          <aside class="aside">
+            <nav aria-label="Privacy policy sections">
+              <a href="#summary">Summary</a>
+              <a href="docs/cloud-save/">Cloud Save</a>
+              <a href="docs/backup-restore/">Backups</a>
+              <a href="support.html">Contact support</a>
+            </nav>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>All Of Me</strong>
+          <p>No ads, no tracking, no analytics in the current app build.</p>
+        </div>
+        <div class="footer-links">
+          <a href="support.html">Support</a>
+          <a href="docs/">Docs</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
