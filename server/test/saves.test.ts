@@ -241,6 +241,34 @@ describe('POST /v1/saves', () => {
     }
   });
 
+  test('stores a large encrypted cloud save package', async () => {
+    const store = new MemoryCloudSaveStore();
+    const app = await buildApp(loadConfig({ NODE_ENV: 'test' }), {
+      cloudSaveStore: store
+    });
+    const cloudSavePackage = createCloudSavePackage({
+      payloadBytes: Buffer.alloc(4 * 1024 * 1024, 7)
+    });
+
+    try {
+      const device = await registerDevice(app);
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/saves',
+        headers: { authorization: device.authorization },
+        payload: cloudSavePackage
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json()).toEqual(cloudSavePackage.metadata);
+      await expect(store.latest(device.registration)).resolves.toMatchObject({
+        metadata: { saveId: cloudSavePackage.metadata.saveId }
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
   test('rejects payloads with mismatched checksums', async () => {
     const app = await buildApp(loadConfig({ NODE_ENV: 'test' }));
     const cloudSavePackage = createCloudSavePackage();

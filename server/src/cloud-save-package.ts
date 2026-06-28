@@ -7,9 +7,6 @@ export const cloudSaveEncryptionXchacha20Poly1305 = 'xchacha20-poly1305';
 export const cloudSaveKeyDerivationPbkdf2HmacSha256 =
   'pbkdf2-hmac-sha256';
 
-const base64Pattern =
-  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-
 const cloudSaveEncryptionSchema = z
   .object({
     algorithm: z.literal(cloudSaveEncryptionXchacha20Poly1305),
@@ -125,6 +122,25 @@ function validateCloudSavePackage(
     );
   }
 
+  const maxPayloadEncodedLength = base64EncodedLength(
+    options.maxPayloadBytes
+  );
+  if (payload.data.length > maxPayloadEncodedLength) {
+    throw new CloudSavePackageValidationError(
+      'Cloud save payload is too large.',
+      413
+    );
+  }
+
+  const expectedPayloadEncodedLength = base64EncodedLength(
+    metadata.payloadByteCount
+  );
+  if (payload.data.length !== expectedPayloadEncodedLength) {
+    throw new CloudSavePackageValidationError(
+      'Cloud save payload byte count does not match metadata.'
+    );
+  }
+
   const payloadBytes = decodeBase64(payload.data, 'payload.data');
   if (payloadBytes.byteLength !== metadata.payloadByteCount) {
     throw new CloudSavePackageValidationError(
@@ -161,7 +177,7 @@ function validateCloudSavePackage(
 }
 
 function decodeBase64(value: string, fieldName: string): Buffer {
-  if (!base64Pattern.test(value)) {
+  if (!isCanonicalBase64Text(value)) {
     throw new CloudSavePackageValidationError(
       `Cloud save field "${fieldName}" must be base64.`
     );
@@ -175,6 +191,55 @@ function decodeBase64(value: string, fieldName: string): Buffer {
   }
 
   return bytes;
+}
+
+function base64EncodedLength(byteLength: number): number {
+  return Math.ceil(byteLength / 3) * 4;
+}
+
+function isCanonicalBase64Text(value: string): boolean {
+  if (value.length === 0 || value.length % 4 !== 0) {
+    return false;
+  }
+
+  let paddingCount = 0;
+  for (let index = value.length - 1; index >= 0; index -= 1) {
+    if (value[index] !== '=') {
+      break;
+    }
+    paddingCount += 1;
+  }
+
+  if (paddingCount > 2) {
+    return false;
+  }
+
+  const dataLength = value.length - paddingCount;
+  for (let index = 0; index < value.length; index += 1) {
+    const charCode = value.charCodeAt(index);
+    if (index >= dataLength) {
+      if (charCode !== 61) {
+        return false;
+      }
+      continue;
+    }
+
+    if (!isBase64DataCharacter(charCode)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isBase64DataCharacter(charCode: number): boolean {
+  return (
+    (charCode >= 65 && charCode <= 90) ||
+    (charCode >= 97 && charCode <= 122) ||
+    (charCode >= 48 && charCode <= 57) ||
+    charCode === 43 ||
+    charCode === 47
+  );
 }
 
 function zodMessage(error: ZodError): string {
