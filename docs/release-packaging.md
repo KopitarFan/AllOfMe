@@ -56,11 +56,13 @@ Copy-ready metadata lives in `docs/app-store-metadata.md`.
 Screenshot planning lives in `docs/screenshot-checklist.md`.
 
 - Name: All Of Me
-- Subtitle: Local-first system tracking
-- Category: Lifestyle
+- Subtitle: IFS, DID, OSDD tracking
+- Category: Health & Fitness
+- Secondary category: Lifestyle
 - SKU: `allofme-ios`
-- Privacy Policy URL: publish `docs/privacy-policy.md` through GitHub Pages or another public site
-- Support URL: publish `docs/support.md` through GitHub Pages or another public site
+- Privacy Policy URL: publish `site/privacy-policy.html`
+- Support URL: publish `site/support.html`
+- Marketing URL: publish `site/index.html`
 - Support email: `support@allofmeapp.com`
 - Bug report email: `bugreports@allofmeapp.com`
 - Age rating notes: no user-generated public sharing, no required account, no live network sync in this build

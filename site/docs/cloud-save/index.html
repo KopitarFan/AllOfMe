@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cloud Save | All Of Me</title>
+    <meta name="description" content="How All Of Me Cloud Save works, what it uploads, and why it is not live sync.">
+    <link rel="icon" href="../../assets/brand/app-icon.png">
+    <link rel="apple-touch-icon" href="../../assets/brand/app-icon.png">
+    <link rel="stylesheet" href="../../styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="../../index.html">
+          <img src="../../assets/brand/app-icon.png" alt="">
+          <span>All Of Me</span>
+        </a>
+        <div class="nav-links">
+          <a href="../" aria-current="page">Docs</a>
+          <a href="../../privacy-policy.html">Privacy</a>
+          <a href="../../support.html">Support</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Cloud Save</p>
+          <h1>Manual restore points, not live sync.</h1>
+          <p>
+            Cloud Save is optional encrypted backup and restore. Your current
+            device remains the source of truth unless you explicitly save or
+            restore.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap content">
+          <article class="article">
+            <h2>What Cloud Save does</h2>
+            <ul>
+              <li>Stores encrypted restore points when you choose to save.</li>
+              <li>Lets an existing connected device create a one-time code for a new device.</li>
+              <li>Lets a linked device restore the latest Cloud Save package using your recovery key.</li>
+              <li>Supports the default All Of Me Cloud server or a compatible self-hosted server.</li>
+            </ul>
+
+            <h2>What Cloud Save does not do</h2>
+            <ul>
+              <li>It is not live sync.</li>
+              <li>It is not collaboration or sharing.</li>
+              <li>It does not make the server the primary copy of your data.</li>
+              <li>It does not send the recovery key to All Of Me Cloud.</li>
+              <li>It is not designed so support can decrypt your restore points.</li>
+            </ul>
+
+            <h2>What gets uploaded</h2>
+            <p>
+              When you save, the app creates an encrypted backup package on the
+              device and uploads that package with operational metadata such as
+              save time, app version, payload size, checksum, and random account
+              and device identifiers.
+            </p>
+            <p>
+              The encrypted package can contain the app data included in your
+              backup, such as members, groups, notes, fronting history, and
+              profile images. Treat Cloud Save access credentials and recovery
+              keys as sensitive.
+            </p>
+
+            <h2>Recovery key</h2>
+            <p>
+              The recovery key is required to decrypt a Cloud Save package
+              during restore. Store it somewhere safe. If the recovery key is
+              lost, All Of Me Cloud is not designed to recover or decrypt the
+              backup for you.
+            </p>
+          </article>
+
+          <aside class="aside">
+            <nav aria-label="Documentation links">
+              <a href="./" aria-current="page">Cloud Save</a>
+              <a href="../new-device/">New device</a>
+              <a href="../backup-restore/">Backup and restore</a>
+              <a href="../safety/">Safety</a>
+            </nav>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>All Of Me</strong>
+          <p>Cloud Save is optional, encrypted, and user-initiated.</p>
+        </div>
+        <div class="footer-links">
+          <a href="../../privacy-policy.html">Privacy</a>
+          <a href="../../support.html">Support</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+

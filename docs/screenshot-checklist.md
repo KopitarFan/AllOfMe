@@ -180,7 +180,7 @@ Review local insights without a server.
 Checklist:
 
 - Charts/data are legible.
-- Avoid implying medical or diagnostic claims.
+- Avoid implying diagnosis, treatment, therapy, or crisis-support claims.
 - Use only demo-generated sessions.
 
 ### 6. Timeline And Recently Deleted
@@ -307,7 +307,6 @@ For each screenshot:
 - No visible simulator debug banners or Flutter debug labels.
 - No clipped text, overflow warnings, or loading spinners.
 - No competitor names or clone language.
-- No medical, therapy, diagnosis, crisis, or treatment claims.
+- No diagnosis, treatment, therapy, or crisis-support claims.
 - Caption, if added later, matches the exact current feature set.
 - Screenshot dimensions match an accepted App Store size.
-
