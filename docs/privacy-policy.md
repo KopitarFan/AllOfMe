@@ -79,9 +79,9 @@ another device.
 
 The developer may receive information only if a user intentionally sends it, for
 example by contacting support, attaching screenshots, submitting TestFlight
-feedback, opening a GitHub issue, or sharing a backup file. Users should avoid
-sending sensitive app data in support requests unless they intentionally choose
-to share it.
+feedback, opening a GitHub issue, joining the community Discord, or sharing a
+backup file. Users should avoid sending sensitive app data in support requests
+or community spaces unless they intentionally choose to share it.
 
 ## Photos And Profile Images
 
@@ -121,9 +121,9 @@ sheet, local authentication, local file storage, and TestFlight when installed a
 a beta. Those services are governed by the platform provider's terms and privacy
 practices.
 
-If a user visits the project website, GitHub repository, support page, or issue
-tracker, those web services may process standard web request or account
-information according to their own policies.
+If a user visits the project website, GitHub repository, support page, issue
+tracker, or community Discord, those web services may process standard web
+request, account, or message information according to their own policies.
 
 If a user configures a self-hosted or third-party Cloud Save server, that server
 is outside the developer-operated All Of Me Cloud service.

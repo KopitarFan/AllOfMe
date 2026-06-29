@@ -15,12 +15,16 @@ For TestFlight builds:
 - Email support requests to `support@allofmeapp.com`.
 - Email reproducible bugs, crashes, and broken workflows to
   `bugreports@allofmeapp.com`.
+- Join the community Discord for peer support, product discussion, and feedback:
+  <https://discord.gg/Sfqevt36pk>
 - If you have access to the GitHub repository, open an issue:
   <https://github.com/KopitarFan/AllOfMe/issues>
 
-Use email for anything that should not require GitHub access. Do not include
-backup files, recovery keys, member details, timeline notes, or screenshots with
-sensitive information unless you intentionally choose to share them for support.
+Use email for anything private or account-specific. The community Discord is not
+therapy, crisis support, medical advice, or a substitute for qualified mental
+health care. Do not include backup files, recovery keys, member details,
+timeline notes, or screenshots with sensitive information unless you
+intentionally choose to share them for support.
 
 ## Helpful Details To Include
 
