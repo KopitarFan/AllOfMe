@@ -1,0 +1,128 @@
+name: Site Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - site/**
+      - .github/workflows/site-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy-production
+  cancel-in-progress: false
+
+env:
+  SITE_PATH: /var/www/allofme-site
+  SITE_URL: https://allofmeapp.com/
+  SSH_PORT: 22
+
+jobs:
+  deploy:
+    name: Deploy static site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate site files
+        run: |
+          set -euo pipefail
+
+          test -f site/index.html
+          test -f site/privacy-policy.html
+          test -f site/support.html
+          test -f site/styles.css
+
+      - name: Install rsync
+        run: |
+          set -euo pipefail
+
+          if ! command -v rsync >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y rsync
+          fi
+
+      - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.ALLOFME_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SSH_HOST" ]; then
+            echo "ALLOFME_DEPLOY_HOST is not set." >&2
+            exit 1
+          fi
+
+          if [ -z "$SSH_USER" ]; then
+            echo "ALLOFME_DEPLOY_USER is not set." >&2
+            exit 1
+          fi
+
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "ALLOFME_DEPLOY_SSH_KEY is not set." >&2
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/allofme_deploy_key
+          chmod 600 ~/.ssh/allofme_deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Check remote site directory
+        env:
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/allofme_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "SITE_PATH='$SITE_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          if ! command -v rsync >/dev/null 2>&1; then
+            echo "rsync is not installed on the server." >&2
+            exit 1
+          fi
+
+          if [ ! -d "$SITE_PATH" ]; then
+            echo "$SITE_PATH does not exist on the server." >&2
+            exit 1
+          fi
+
+          if [ ! -w "$SITE_PATH" ]; then
+            echo "$SITE_PATH is not writable by the deploy user." >&2
+            exit 1
+          fi
+          REMOTE
+
+      - name: Sync site files
+        env:
+          SSH_HOST: ${{ secrets.ALLOFME_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ALLOFME_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          rsync -az --delete --checksum --itemize-changes \
+            -e "ssh -i ~/.ssh/allofme_deploy_key -p $SSH_PORT" \
+            site/ "$SSH_USER@$SSH_HOST:$SITE_PATH/"
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+
+          curl --fail --show-error --silent --retry 5 --retry-delay 3 "$SITE_URL" >/dev/null
+          curl --fail --show-error --silent --retry 5 --retry-delay 3 "${SITE_URL}privacy-policy.html" >/dev/null
+          curl --fail --show-error --silent --retry 5 --retry-delay 3 "${SITE_URL}support.html" >/dev/null
