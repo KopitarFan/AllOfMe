@@ -4,10 +4,14 @@ Last updated: 2026-06-26
 
 This runbook covers the All Of Me cloud-save API running on Vultr.
 
+For request and response details, see the REST API contract in
+`docs/server-rest-api.md`.
+
 ## Production Topology
 
 - Public API: `https://api.allofmeapp.com`
 - Health check: `https://api.allofmeapp.com/healthz`
+- Swagger UI: `https://api.allofmeapp.com/docs`
 - Container image: `ghcr.io/kopitarfan/all-of-me-server:latest`
 - Host: Vultr Ubuntu instance
 - Reverse proxy: Caddy

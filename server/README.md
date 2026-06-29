@@ -2,6 +2,22 @@
 
 Node.js and Fastify API for optional All Of Me cloud saves.
 
+## REST API Contract
+
+The service exposes the All Of Me Cloud Save REST API. The full request,
+response, validation, auth, and error contract lives in
+[`docs/server-rest-api.md`](../docs/server-rest-api.md).
+
+The important product boundary is that the API stores encrypted restore points.
+It validates the `CloudSavePackage` envelope and metadata, but it never decrypts
+or inspects app data. The current device remains the source of truth.
+
+Interactive Swagger docs are served by the API:
+
+- Swagger UI: `http://127.0.0.1:3000/docs`
+- OpenAPI JSON: `http://127.0.0.1:3000/docs/json`
+- OpenAPI YAML: `http://127.0.0.1:3000/docs/yaml`
+
 ## Local Development
 
 This service uses pnpm.
@@ -120,7 +136,7 @@ ALLOFME_SERVER_IMAGE=all-of-me-server:local \
   docker compose --env-file .env.production -f docker-compose.production.yml up -d
 ```
 
-## Current Endpoints
+## Endpoint Summary
 
 - `GET /healthz` returns `{ "ok": true }`.
 - `POST /v1/devices/register` creates a new account/device pair and returns a
@@ -139,7 +155,3 @@ ALLOFME_SERVER_IMAGE=all-of-me-server:local \
   `CloudSavePackage` for the authenticated account.
 - `GET /v1/saves/:saveId` requires bearer auth and returns one saved
   `CloudSavePackage` for the authenticated account.
-
-The cloud-save API will build on the Flutter app's encrypted
-`CloudSavePackage` shape. The server should store encrypted restore points and
-metadata, not plaintext app data.

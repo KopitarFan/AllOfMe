@@ -15,6 +15,7 @@ import { registerCloudSaveRoutes } from './cloud-save-routes.js';
 import { type CloudSaveStore } from './cloud-save-store.js';
 import { createDefaultStores } from './cloud-save-store-factory.js';
 import { type AppConfig } from './config.js';
+import { registerOpenApiRoutes } from './openapi.js';
 
 export type AppDependencies = {
   authStore?: AuthStore;
@@ -32,6 +33,8 @@ export async function buildApp(
   dependencies: AppDependencies = {}
 ): Promise<FastifyInstance> {
   const app = Fastify({
+    // The REST contract caps decoded encrypted payload bytes. The HTTP body
+    // limit stays larger so JSON/base64 envelope overhead can reach validation.
     bodyLimit: config.cloudSaveMaxPayloadBytes * 2 + 16 * 1024,
     genReqId: (request) => requestIdFromHeader(request.headers['x-request-id']),
     trustProxy: config.trustProxy,
@@ -50,6 +53,8 @@ export async function buildApp(
   app.setErrorHandler((error, request, reply) => {
     handleError(error, request, reply);
   });
+
+  await registerOpenApiRoutes(app);
 
   const defaultStores =
     dependencies.authStore != null && dependencies.cloudSaveStore != null
@@ -159,6 +164,7 @@ function statusCodeForError(error: HttpErrorLike): number {
 
 function requestIdFromHeader(value: string | string[] | undefined): string {
   const candidate = Array.isArray(value) ? value[0] : value;
+  // Keep caller-supplied IDs log-safe and compact before echoing them back.
   if (candidate != null && /^[A-Za-z0-9._:-]{1,128}$/.test(candidate)) {
     return candidate;
   }

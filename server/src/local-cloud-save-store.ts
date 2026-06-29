@@ -458,6 +458,7 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
     const finalPath = this.absolutePackagePath(packagePath);
     const tempPath = `${finalPath}.${process.pid}.${Date.now()}.tmp`;
 
+    // Write then rename so readers never observe a partial JSON package file.
     await mkdir(dirname(finalPath), { recursive: true });
     await writeFile(tempPath, JSON.stringify(cloudSavePackage, null, 2));
     await rename(tempPath, finalPath);
@@ -468,6 +469,8 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
       this.absolutePackagePath(packagePath),
       'utf8'
     );
+    // Re-parse stored packages to catch disk corruption or manual edits before
+    // sending a package back to a client.
     return parseCloudSavePackage(JSON.parse(contents), {
       maxPayloadBytes: Number.MAX_SAFE_INTEGER
     });
@@ -519,6 +522,8 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
     const columns = this.database
       .prepare('PRAGMA table_info(cloud_saves)')
       .all() as Array<{ name: string }>;
+    // Early local builds used a non-account-scoped cloud_saves table. Drop it
+    // during dev migration rather than exposing global saves through v1 routes.
     if (
       columns.length > 0 &&
       !columns.some((column) => column.name === 'account_id')
