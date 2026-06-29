@@ -20,6 +20,7 @@ The core paradigm is inverted from client-server:
 - Tests: `test/`
 - Product milestones: `docs/milestones.md`
 - Architecture notes: `docs/local-first-architecture.md`
+- Server REST API contract: `docs/server-rest-api.md`
 - Server runbook: `docs/server-production-runbook.md`
 - Observability options: `docs/observability-options.md`
 - iOS release packaging: `docs/release-packaging.md`

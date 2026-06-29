@@ -19,6 +19,8 @@ export async function registerCloudSaveRoutes(
   app: FastifyInstance,
   options: CloudSaveRouteOptions
 ): Promise<void> {
+  // Register literal read routes before /:saveId so "latest" is not parsed as
+  // a save ID.
   app.get('/v1/saves', async (request) => {
     const device = await requireAuthenticatedDevice(
       app,
@@ -97,6 +99,8 @@ function cloudSaveUploadRateLimitKey(request: FastifyRequest): string {
   const authorization = request.headers.authorization;
   const token = parseBearerToken(authorization);
 
+  // Valid-looking bearer tokens get their own upload bucket, which avoids one
+  // active device throttling another behind the same home or mobile network.
   return token == null ? `ip:${request.ip}` : `device:${hashAuthToken(token)}`;
 }
 

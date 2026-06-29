@@ -135,6 +135,8 @@ function validateCloudSavePackage(
   const expectedPayloadEncodedLength = base64EncodedLength(
     metadata.payloadByteCount
   );
+  // Check the base64 text length before decoding so mismatched packages fail
+  // cheaply and do not allocate large buffers.
   if (payload.data.length !== expectedPayloadEncodedLength) {
     throw new CloudSavePackageValidationError(
       'Cloud save payload byte count does not match metadata.'
@@ -154,6 +156,8 @@ function validateCloudSavePackage(
     );
   }
 
+  // The server validates the encryption envelope only. Decryption stays on the
+  // client so the API never sees plaintext backup contents.
   const nonce = decodeBase64(payload.encryption.nonceBase64, 'nonceBase64');
   if (nonce.byteLength !== 24) {
     throw new CloudSavePackageValidationError(
@@ -177,6 +181,8 @@ function validateCloudSavePackage(
 }
 
 function decodeBase64(value: string, fieldName: string): Buffer {
+  // Node's decoder accepts some non-canonical inputs. Keep the API contract
+  // strict so checksum and byte-count validation are deterministic.
   if (!isCanonicalBase64Text(value)) {
     throw new CloudSavePackageValidationError(
       `Cloud save field "${fieldName}" must be base64.`
