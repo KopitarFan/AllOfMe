@@ -37,3 +37,4 @@ Deployment:
    - Privacy Policy URL: `https://allofmeapp.com/privacy-policy.html`
    - Support URL: `https://allofmeapp.com/support.html`
    - Marketing URL: `https://allofmeapp.com/`
+   - App Store URL: `https://apps.apple.com/app/all-of-me-systems-manager/id6780302315`
