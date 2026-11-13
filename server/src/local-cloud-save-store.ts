@@ -305,6 +305,10 @@ export class LocalCloudSaveStore implements AuthStore, CloudSaveStore {
     return device;
   }
 
+  async accountExists(accountId: string): Promise<boolean> {
+    return this.database.prepare('SELECT 1 FROM accounts WHERE account_id = ?').get(accountId) != null;
+  }
+
   async authenticateToken(token: string): Promise<AuthenticatedDevice | null> {
     const row = this.database
       .prepare(

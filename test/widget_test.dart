@@ -6,8 +6,11 @@ import 'package:all_of_me_demo/cloud_save_session.dart';
 import 'package:all_of_me_demo/main.dart';
 import 'package:all_of_me_demo/models.dart';
 import 'package:all_of_me_demo/storage.dart';
+// Keep compatibility with older Flutter releases until the Material package migration.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -141,6 +144,7 @@ void main() {
     Size size = const Size(1200, 900),
   }) async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 

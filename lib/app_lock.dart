@@ -71,7 +71,7 @@ class LocalAppAuthenticator implements AppAuthenticator {
         return false;
       }
 
-      return auth.authenticate(
+      return await auth.authenticate(
         localizedReason: reason,
         persistAcrossBackgrounding: true,
       );

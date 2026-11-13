@@ -54,22 +54,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _selectedGroupId;
   _MemberSortMode _memberSortMode = _MemberSortMode.nameAscending;
   bool _showFirstRunGuide = false;
+  final FrontSharing _frontSharing = FrontSharing();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_frontSharing.retry());
     _loadSnapshot();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _frontSharing.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_frontSharing.retry());
     final snapshot = _snapshot;
     if (snapshot == null || !snapshot.security.appLockEnabled) {
       return;
@@ -260,7 +264,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _setAppLockEnabled(true);
   }
 
-  Future<void> _persist(AppSnapshot snapshot) async {
+  Future<void> _persist(
+    AppSnapshot snapshot, {
+    bool publishFront = false,
+  }) async {
     setState(() {
       _snapshot = snapshot;
       _saving = true;
@@ -270,6 +277,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     AppStoreInfo? storeInfo;
     try {
       savedSnapshot = await widget.store.save(snapshot);
+      if (publishFront) {
+        // Sharing runs after local persistence and cannot prevent a front change.
+        unawaited(_publishFront(savedSnapshot));
+      }
       storeInfo = await widget.store.info();
     } catch (error) {
       if (mounted) {
@@ -288,6 +299,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
           _saving = false;
         });
+      }
+    }
+  }
+
+  Future<void> _publishFront(AppSnapshot snapshot) async {
+    try {
+      await _frontSharing.frontChanged(snapshot);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Front saved locally. Sharing could not be queued.'),
+          ),
+        );
       }
     }
   }
@@ -355,6 +380,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           frontSessions: frontSessions,
           timeline: timeline,
         ),
+        publishFront:
+            archived && snapshot.frontingMemberIds.contains(member.id),
       );
       return;
     }
@@ -463,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _toggleFront(Member member) async {
     final snapshot = _snapshot;
-    if (snapshot == null) {
+    if (snapshot == null || _saving) {
       return;
     }
 
@@ -508,6 +535,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ...snapshot.timeline,
         ],
       ),
+      publishFront: true,
     );
   }
 
@@ -856,6 +884,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       );
 
+      if (!mounted) {
+        return;
+      }
+
       if (action is AppThemePalette) {
         widget.onThemePaletteChanged(action);
         return;
@@ -865,6 +897,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       switch (action) {
+        case _SettingsPrivacyAction.frontSharing:
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) =>
+                  _FrontSharingPage(sharing: _frontSharing, snapshot: snapshot),
+            ),
+          );
+          return;
         case _SettingsPrivacyAction.createBackup:
           await _exportBackup();
           return;
@@ -1232,6 +1272,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
 
     try {
+      final sharingPaused = await _frontSharing.pauseForReset(
+        _snapshot ?? AppSnapshot.empty(),
+      );
       await widget.store.clear();
       final freshSnapshot = await widget.store.save(AppSnapshot.empty());
       final storeInfo = await widget.store.info();
@@ -1248,9 +1291,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _showFirstRunGuide = true;
         _saving = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Local data cleared.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sharingPaused
+                ? 'Local data cleared.'
+                : 'Local data cleared. Sharing pause was not confirmed; check Front sharing.',
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -1292,7 +1341,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final rawBackup = bytes == null
           ? await result.xFiles.single.readAsString()
           : utf8.decode(bytes);
-      return _restoreBackup(rawBackup);
+      return await _restoreBackup(rawBackup);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(

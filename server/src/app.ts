@@ -16,10 +16,12 @@ import { type CloudSaveStore } from './cloud-save-store.js';
 import { createDefaultStores } from './cloud-save-store-factory.js';
 import { type AppConfig } from './config.js';
 import { registerOpenApiRoutes } from './openapi.js';
+import { registerFrontSharing } from './front-sharing.js';
 
 export type AppDependencies = {
   authStore?: AuthStore;
   cloudSaveStore?: CloudSaveStore;
+  frontSharing?: Parameters<typeof registerFrontSharing>[3];
 };
 
 type HttpErrorLike = Error & {
@@ -85,6 +87,8 @@ export async function buildApp(
     config,
     store: cloudSaveStore
   });
+
+  await registerFrontSharing(app, config, authStore, dependencies.frontSharing);
 
   app.get(
     '/healthz',
