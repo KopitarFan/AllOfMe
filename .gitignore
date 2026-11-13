@@ -51,3 +51,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# Native companion and signing material
+**/xcuserdata/
+**/*.xcuserstate
+**/*.p8
+**/*.p12
+**/*.mobileprovision

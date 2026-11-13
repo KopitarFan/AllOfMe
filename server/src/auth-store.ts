@@ -29,6 +29,7 @@ export interface AuthStore {
     deviceLabel?: string;
   }): Promise<DeviceRegistration | null>;
   authenticateToken(token: string): Promise<AuthenticatedDevice | null>;
+  accountExists(accountId: string): Promise<boolean>;
   close?(): Promise<void> | void;
 }
 
@@ -98,6 +99,10 @@ export class MemoryAuthStore implements AuthStore {
     linkCode.redeemedByDeviceId = device.deviceId;
 
     return device;
+  }
+
+  async accountExists(accountId: string): Promise<boolean> {
+    return [...this.devicesByTokenHash.values()].some(device => device.accountId === accountId);
   }
 
   async authenticateToken(token: string): Promise<AuthenticatedDevice | null> {

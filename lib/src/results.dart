@@ -33,6 +33,7 @@ class _DeletedItemReference {
 enum _DeletedItemKind { member, group, timelineEntry }
 
 enum _SettingsPrivacyAction {
+  frontSharing,
   createBackup,
   importBackupFile,
   pasteBackupJson,

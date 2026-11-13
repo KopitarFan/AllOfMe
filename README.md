@@ -23,6 +23,7 @@ The core paradigm is inverted from client-server:
 - Server REST API contract: `docs/server-rest-api.md`
 - Server runbook: `docs/server-production-runbook.md`
 - Observability options: `docs/observability-options.md`
+- Front sharing and Swift receiver: `docs/front-sharing.md`
 - iOS release packaging: `docs/release-packaging.md`
 - App Store metadata draft: `docs/app-store-metadata.md`
 - Screenshot checklist: `docs/screenshot-checklist.md`

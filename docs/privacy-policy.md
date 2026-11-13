@@ -1,6 +1,6 @@
 # All Of Me Privacy Policy
 
-Last updated: June 28, 2026
+Last updated: November 13, 2026
 
 All Of Me is a local-first mental health tool for private IFS, DID, and
 OSDD-informed parts and system work. The current build is designed so the
@@ -40,6 +40,31 @@ may include:
 On iOS and other device builds, this data is stored in app-owned local storage,
 including a local SQLite database and app-owned image/backup files. On web, the
 current build uses browser-local storage appropriate for the browser platform.
+
+## Optional Front Sharing
+
+Front sharing is off by default and separate from Cloud Save. When enabled,
+the sharing service stores the latest shared front names and update timestamp,
+recipient labels, hashed invitation/access tokens, and recipient APNs device tokens.
+Shared front names are protected in transit using HTTPS and by access controls;
+they are not end-to-end encrypted like Cloud Save backup contents. The service
+operator can access the shared status. No notes, full profiles, profile images,
+or backup payloads are sent by this feature.
+
+Invitations expire after ten minutes and can be redeemed once. A receiver
+credential grants access only to shared front status, not Cloud Save or sender
+settings. Pausing sharing clears the server's current shared status; resuming
+publishes the current front. Revoking a recipient prevents future authenticated
+access but cannot erase information they already viewed. Pending offline updates
+and sender credentials are kept in secure device storage. Notifications contain
+only a discreet update message, not member names. Notification delivery is best
+effort. The receiver shows when status was last changed and last fetched.
+
+If a pause is requested while offline, it takes effect on the service after the
+sender reconnects. The app reports an unconfirmed pause and retries while running
+and on its next launch/resume. Clearing local data also requests a sharing pause.
+Receiver pairing credentials are held in the iOS Keychain; selecting Disconnect
+removes access on the server and then removes the local credentials.
 
 ## Optional Cloud Save
 

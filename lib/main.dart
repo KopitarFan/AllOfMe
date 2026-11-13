@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+// Keep compatibility with older Flutter releases until the Material package migration.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +16,7 @@ import 'cloud_save_factory.dart';
 import 'cloud_save_remote.dart';
 import 'cloud_save_session.dart';
 import 'models.dart';
+import 'front_sharing.dart';
 import 'storage.dart';
 import 'storage_factory.dart';
 
@@ -25,6 +29,7 @@ part 'src/first_run.dart';
 part 'src/forms.dart';
 part 'src/recovery.dart';
 part 'src/settings.dart';
+part 'src/front_sharing_settings.dart';
 part 'src/results.dart';
 part 'src/shared_helpers.dart';
 

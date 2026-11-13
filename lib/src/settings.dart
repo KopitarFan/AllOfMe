@@ -184,6 +184,16 @@ class _SettingsPrivacyDialog extends StatelessWidget {
                   ).pop(_SettingsPrivacyAction.pasteBackupJson),
                 ),
                 const SizedBox(height: 18),
+                const _SettingsSectionTitle('Sharing'),
+                _SettingsActionTile(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Front sharing',
+                  subtitle: 'Choose who receives your front updates.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_SettingsPrivacyAction.frontSharing),
+                ),
+                const SizedBox(height: 18),
                 const _SettingsSectionTitle('Recovery'),
                 _SettingsActionTile(
                   icon: Icons.restore_from_trash_outlined,
