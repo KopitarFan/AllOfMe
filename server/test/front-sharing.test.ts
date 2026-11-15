@@ -41,6 +41,41 @@ const status = (names = ['A', 'B'], time = Date.now()) => ({
 });
 
 describe('front sharing boundaries', () => {
+  it('shares bounded profile details without creating a front-change alert', async () => {
+    const { app, owner, receiver, db } = await fixture();
+    await app.inject({ method: 'PUT', url: '/v1/front-sharing/device', headers: receiver,
+      payload: { token: 'b'.repeat(64), environment: 'production' } });
+    const value = { ...status(), members: [{
+      id: 'part-a', name: 'A', role: 'Protector', description: 'A description.',
+      colorValue: 0xff24786d,
+      groups: [{ id: 'group-a', name: 'Daily life', colorValue: 0xff8b5cf6 }],
+      imageDataUri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    }] };
+    const result = await app.inject({ method: 'PUT', url: '/v1/front-sharing/status',
+      headers: owner, payload: { ...value, notify: false } });
+    expect(result.statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/v1/front-sharing/current', headers: receiver })).json().status).toEqual(value);
+    expect(db.prepare('SELECT * FROM front_jobs').all()).toHaveLength(0);
+  });
+
+  it('rejects remote image URLs, oversized rasters and unknown profile fields', async () => {
+    const { app, owner } = await fixture();
+    const png = Buffer.alloc(24);
+    Buffer.from([137,80,78,71,13,10,26,10]).copy(png);
+    png.write('IHDR', 12, 'ascii');
+    png.writeUInt32BE(10000, 16);
+    png.writeUInt32BE(10000, 20);
+    for (const member of [
+      { name: 'A', imageDataUri: 'https://example.com/private.png' },
+      { name: 'A', imageDataUri: 'data:image/png;base64,' + png.toString('base64') },
+      { name: 'A', description: 'x'.repeat(16001) },
+      { name: 'A', timeline: 'must remain private' },
+    ]) {
+      expect((await app.inject({ method: 'PUT', url: '/v1/front-sharing/status',
+        headers: owner, payload: { ...status(), members: [member] } })).statusCode).toBe(400);
+    }
+  });
+
   it('blocks receiver reads and purges shared data when the sender account is deleted', async () => {
     const { app, db, owner, receiver, authStore } = await fixture();
     await app.inject({ method: 'PUT', url: '/v1/front-sharing/status', headers: owner, payload: status() });

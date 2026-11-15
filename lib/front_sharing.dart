@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
+import 'front_sharing_profile.dart';
 
 // Independent credentials: sharing never requires uploading a backup.
 class FrontSharing {
@@ -144,10 +145,10 @@ class FrontSharing {
     await _request('DELETE', 'recipients/$id');
   }
 
-  Future<void> frontChanged(AppSnapshot snapshot) =>
-      _serial(() => _queue(snapshot));
+  Future<void> frontChanged(AppSnapshot snapshot, {bool notify = true}) =>
+      _serial(() => _queue(snapshot, notify: notify));
 
-  Future<void> _queue(AppSnapshot snapshot) async {
+  Future<void> _queue(AppSnapshot snapshot, {bool notify = true}) async {
     if (_disposed || await _storage.read(key: _key(_enabledKey)) != 'true') {
       return;
     }
@@ -157,15 +158,25 @@ class FrontSharing {
     final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     final eventId =
         '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+    var shouldNotify = notify;
+    if (!notify) {
+      final pending = await _storage.read(key: _key(_pendingKey));
+      if (pending != null) {
+        try {
+          shouldNotify = (jsonDecode(pending) as Map)['notify'] != false;
+        } catch (_) {
+          // Replace an unreadable pending update with the current snapshot.
+        }
+      }
+    }
+    final profiles = await sharedFrontProfiles(snapshot);
     await _storage.write(
       key: _key(_pendingKey),
       value: jsonEncode({
         'eventId': eventId,
         'changedAt': DateTime.now().toUtc().toIso8601String(),
-        'members': snapshot.activeMembers
-            .where((m) => snapshot.frontingMemberIds.contains(m.id))
-            .map((m) => {'name': m.name})
-            .toList(),
+        'members': profiles,
+        if (!shouldNotify) 'notify': false,
       }),
     );
     // Coalesce rapid toggles when changing from one member to another.

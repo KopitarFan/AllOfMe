@@ -121,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _showFirstRunGuide = isFirstRun;
         });
       }
+      if (loaded != null) unawaited(_publishFront(snapshot, notify: false));
       if (shouldLock) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -268,6 +269,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     AppSnapshot snapshot, {
     bool publishFront = false,
   }) async {
+    final previous = _snapshot;
+    final profileChanged =
+        previous != null &&
+        previous.frontingMemberIds.length ==
+            snapshot.frontingMemberIds.length &&
+        previous.frontingMemberIds.every(snapshot.frontingMemberIds.contains) &&
+        sharedFrontProfileSignature(previous) !=
+            sharedFrontProfileSignature(snapshot);
     setState(() {
       _snapshot = snapshot;
       _saving = true;
@@ -277,9 +286,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     AppStoreInfo? storeInfo;
     try {
       savedSnapshot = await widget.store.save(snapshot);
-      if (publishFront) {
+      if (publishFront || profileChanged) {
         // Sharing runs after local persistence and cannot prevent a front change.
-        unawaited(_publishFront(savedSnapshot));
+        unawaited(_publishFront(savedSnapshot, notify: publishFront));
       }
       storeInfo = await widget.store.info();
     } catch (error) {
@@ -303,9 +312,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _publishFront(AppSnapshot snapshot) async {
+  Future<void> _publishFront(AppSnapshot snapshot, {bool notify = true}) async {
     try {
-      await _frontSharing.frontChanged(snapshot);
+      await _frontSharing.frontChanged(snapshot, notify: notify);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

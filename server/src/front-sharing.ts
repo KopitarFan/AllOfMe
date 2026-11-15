@@ -15,8 +15,25 @@ const statusSchema = z.object({
   changedAt: z.iso.datetime({ offset: true }),
   members: z.array(z.object({
     name: z.string().trim().min(1).max(100),
+    id: z.string().min(1).max(160).optional(),
+    role: z.string().max(1000).optional(),
+    description: z.string().max(16000).optional(),
+    colorValue: z.number().int().min(0).max(0xffffffff).optional(),
+    groups: z.array(z.object({
+      id: z.string().min(1).max(160),
+      name: z.string().trim().min(1).max(100),
+      colorValue: z.number().int().min(0).max(0xffffffff),
+    }).strict()).max(50).optional(),
+    imageDataUri: z.string().max(66000).regex(/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/).refine(value => {
+      const bytes = Buffer.from(value.slice('data:image/png;base64,'.length), 'base64');
+      return bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) &&
+        bytes.toString('ascii', 12, 16) === 'IHDR' &&
+        bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(16) <= 128 &&
+        bytes.readUInt32BE(20) > 0 && bytes.readUInt32BE(20) <= 128;
+    }).optional(),
   }).strict()).max(50),
 }).strict();
+const statusRequestSchema = statusSchema.extend({ notify: z.boolean().optional() });
 const labelSchema = z.object({ label: z.string().trim().min(1).max(80) }).strict();
 type OwnerRow = { account: string; paused: number; status: string | null; version: number };
 type RecipientRow = { id: string; account: string; label: string; token_hash: string; push_token: string | null; environment: string | null };
@@ -56,7 +73,7 @@ export async function registerFrontSharing(
     if (!request.url.startsWith('/v1/front-sharing/')) return;
     const path = request.url.split('?')[0];
     let schema: z.ZodType | undefined;
-    if (path.endsWith('/status') && request.method === 'PUT') schema = statusSchema;
+    if (path.endsWith('/status') && request.method === 'PUT') schema = statusRequestSchema;
     if (path.endsWith('/invitations') && request.method === 'POST') schema = labelSchema;
     if (path.endsWith('/settings') && request.method === 'PUT') schema = z.object({ paused: z.boolean() }).strict();
     if (path.endsWith('/pair') && request.method === 'POST') schema = z.object({ code: z.string().min(20).max(100) }).strict();
@@ -153,9 +170,9 @@ export async function registerFrontSharing(
     })();
     return reply.code(204).send();
   });
-  app.put('/v1/front-sharing/status', async request => {
+  app.put('/v1/front-sharing/status', { bodyLimit: 6 * 1024 * 1024 }, async request => {
     const account = await owner(request);
-    const status = statusSchema.parse(request.body);
+    const { notify = true, ...status } = statusRequestSchema.parse(request.body);
     if (Date.parse(status.changedAt) > Date.now() + 60_000) throw app.httpErrors.badRequest('Update time is in the future.');
     return db.transaction(() => {
       const state = ownerState(account);
@@ -167,7 +184,7 @@ export async function registerFrontSharing(
       }
       db.prepare('UPDATE front_owners SET status = ?, version = version + 1 WHERE account = ?')
         .run(JSON.stringify(status), account);
-      queue(account, ownerState(account).version);
+      if (notify) queue(account, ownerState(account).version);
       return { accepted: true };
     })();
   });

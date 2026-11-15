@@ -47,7 +47,7 @@ void main() {
   });
 
   test(
-    'offline update survives a new client and only sends front names',
+    'offline update survives a new client and only sends current-front profiles',
     () async {
       Map<String, dynamic>? sent;
       final sharing = FrontSharing(
@@ -71,9 +71,68 @@ void main() {
       await reopened.retry();
       expect(sent!.keys, unorderedEquals(['eventId', 'changedAt', 'members']));
       for (final member in sent!['members'] as List) {
-        expect((member as Map).keys, ['name']);
+        expect(
+          (member as Map).keys,
+          unorderedEquals([
+            'id',
+            'name',
+            'role',
+            'description',
+            'colorValue',
+            'groups',
+          ]),
+        );
       }
       reopened.dispose();
+    },
+  );
+
+  test(
+    'profile edits publish silently after the front update is delivered',
+    () async {
+      Map<String, dynamic>? sent;
+      final sharing = FrontSharing(
+        client: MockClient((request) async {
+          if (request.url.path == '/v1/devices/register') {
+            return http.Response('{"token":"owner"}', 201);
+          }
+          if (request.url.path.endsWith('/status')) {
+            sent = (jsonDecode(request.body) as Map).cast<String, dynamic>();
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      addTearDown(sharing.dispose);
+      final snapshot = AppSnapshot.seeded();
+      await sharing.setPaused(false, snapshot);
+      await sharing.retry();
+      await sharing.frontChanged(snapshot, notify: false);
+      await sharing.retry();
+      expect(sent!['notify'], isFalse);
+    },
+  );
+
+  test(
+    'a profile refresh preserves a pending front-change notification',
+    () async {
+      Map<String, dynamic>? sent;
+      final sharing = FrontSharing(
+        client: MockClient((request) async {
+          if (request.url.path == '/v1/devices/register') {
+            return http.Response('{"token":"owner"}', 201);
+          }
+          if (request.url.path.endsWith('/status')) {
+            sent = (jsonDecode(request.body) as Map).cast<String, dynamic>();
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      addTearDown(sharing.dispose);
+      final snapshot = AppSnapshot.seeded();
+      await sharing.setPaused(false, snapshot);
+      await sharing.frontChanged(snapshot, notify: false);
+      await sharing.retry();
+      expect(sent!.containsKey('notify'), isFalse);
     },
   );
 

@@ -53,7 +53,7 @@ class _FrontSharingPageState extends State<_FrontSharingPage> {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            'Share your current front with people you choose. Front names and the update time are stored on the sharing service and shown to your recipients. Notes, profiles, and backups are not shared.',
+            'Share your current front with people you choose. The current front’s names, pictures, roles, Notes descriptions, groups, and update time are stored on the sharing service and shown to your recipients. Timeline notes, other members, and backups are not shared.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),
