@@ -17,6 +17,7 @@ import 'cloud_save_remote.dart';
 import 'cloud_save_session.dart';
 import 'models.dart';
 import 'front_sharing.dart';
+import 'front_sharing_profile.dart';
 import 'storage.dart';
 import 'storage_factory.dart';
 

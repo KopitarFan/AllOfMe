@@ -1,6 +1,6 @@
 # All Of Me Privacy Policy
 
-Last updated: November 13, 2026
+Last updated: November 14, 2026
 
 All Of Me is a local-first mental health tool for private IFS, DID, and
 OSDD-informed parts and system work. The current build is designed so the
@@ -44,12 +44,15 @@ current build uses browser-local storage appropriate for the browser platform.
 ## Optional Front Sharing
 
 Front sharing is off by default and separate from Cloud Save. When enabled,
-the sharing service stores the latest shared front names and update timestamp,
+the sharing service stores the latest front names, roles, per-member Notes text
+(shown as the description), small profile-picture thumbnails, active group names
+and colors, and update timestamp,
 recipient labels, hashed invitation/access tokens, and recipient APNs device tokens.
-Shared front names are protected in transit using HTTPS and by access controls;
+Shared profiles are protected in transit using HTTPS and by access controls;
 they are not end-to-end encrypted like Cloud Save backup contents. The service
-operator can access the shared status. No notes, full profiles, profile images,
-or backup payloads are sent by this feature.
+operator can access the shared status. Only members currently fronting are
+included. Timeline notes, non-fronting members, full-resolution photos, group
+descriptions, and backup payloads are not sent by this feature.
 
 Invitations expire after ten minutes and can be redeemed once. A receiver
 credential grants access only to shared front status, not Cloud Save or sender
@@ -102,7 +105,11 @@ to the developer-operated Cloud Save service when the user checks Cloud Save
 status, saves, restores, registers a device, creates a device link code, or links
 another device.
 
-The developer may receive information only if a user intentionally sends it, for
+When front sharing is enabled, the shared profile data described above is sent
+to the sharing service automatically after front or current-profile changes.
+Small profile-picture thumbnails are included; original photos are not.
+
+The developer may also receive information if a user intentionally sends it, for
 example by contacting support, attaching screenshots, submitting TestFlight
 feedback, opening a GitHub issue, joining the community Discord, or sharing a
 backup file. Users should avoid sending sensitive app data in support requests

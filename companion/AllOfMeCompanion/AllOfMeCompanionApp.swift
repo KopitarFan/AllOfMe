@@ -2,7 +2,28 @@ import SwiftUI
 import UserNotifications
 import Security
 
-struct FrontMember: Decodable { let name: String }
+struct FrontGroup: Decodable {
+    let id: String
+    let name: String
+    let colorValue: UInt32
+}
+
+struct FrontMember: Decodable {
+    let name: String
+    let id: String?
+    let role: String?
+    let description: String?
+    let colorValue: UInt32?
+    let groups: [FrontGroup]?
+    let imageDataUri: String?
+
+    var photoData: Data? {
+        guard let imageDataUri,
+              imageDataUri.hasPrefix("data:image/png;base64,"),
+              imageDataUri.utf8.count <= 66000 else { return nil }
+        return Data(base64Encoded: String(imageDataUri.dropFirst("data:image/png;base64,".count)))
+    }
+}
 struct FrontStatus: Decodable {
     let eventId: String
     let changedAt: String
@@ -277,9 +298,9 @@ struct CompanionView: View {
                                 if status.members.isEmpty {
                                     Text("No one is marked as fronting")
                                 }
-                                ForEach(Array(status.members.enumerated()), id: \.offset) { _, member in
-                                    Label(member.name, systemImage: "person.crop.circle")
-                                        .font(.title2)
+                                ForEach(Array(status.members.enumerated()), id: \.offset) { index, member in
+                                    FrontMemberRow(member: member)
+                                        .id(member.id ?? "\(index)-\(member.name)")
                                 }
                                 if let date = status.date {
                                     Text("Updated \(date.formatted(date: .abbreviated, time: .shortened))")
@@ -334,5 +355,90 @@ struct CompanionView: View {
         }
         .tint(.teal)
         .privacySensitive()
+    }
+}
+
+
+private func profileColor(_ value: UInt32?) -> Color {
+    guard let value else { return .teal }
+    return Color(
+        red: Double((value >> 16) & 255) / 255,
+        green: Double((value >> 8) & 255) / 255,
+        blue: Double(value & 255) / 255
+    )
+}
+
+struct FrontMemberRow: View {
+    let member: FrontMember
+    @State private var expanded = false
+
+    private var groups: [FrontGroup] { member.groups ?? [] }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 12) {
+                if let role = member.role, !role.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(role).font(.subheadline).foregroundStyle(.secondary)
+                }
+                if let description = member.description,
+                   !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(description).textSelection(.enabled)
+                } else {
+                    Text("No description shared yet.")
+                        .foregroundStyle(.secondary)
+                }
+                if !groups.isEmpty {
+                    Text("Groups").font(.subheadline.weight(.semibold))
+                    ForEach(groups, id: \.id) { group in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Circle().fill(profileColor(group.colorValue))
+                                .frame(width: 9, height: 9).accessibilityHidden(true)
+                            Text(group.name)
+                        }
+                        .font(.subheadline)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 10)
+        } label: {
+            HStack(spacing: 12) {
+                avatar
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(member.name).font(.headline).foregroundStyle(.primary)
+                    if !groups.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(Array(groups.prefix(8)), id: \.id) { group in
+                                Circle().fill(profileColor(group.colorValue))
+                                    .frame(width: 9, height: 9)
+                            }
+                            if groups.count > 8 {
+                                Text("+\(groups.count - 8)").font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Groups: " + groups.map(\.name).joined(separator: ", "))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    @ViewBuilder private var avatar: some View {
+        if let data = member.photoData, let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill()
+                .frame(width: 48, height: 48).clipShape(Circle())
+                .accessibilityHidden(true)
+        } else {
+            ZStack {
+                Circle().fill(profileColor(member.colorValue).opacity(0.15))
+                Text(String(member.name.prefix(1)).uppercased())
+                    .font(.title3.weight(.semibold)).foregroundStyle(profileColor(member.colorValue))
+            }
+            .frame(width: 48, height: 48)
+            .accessibilityHidden(true)
+        }
     }
 }

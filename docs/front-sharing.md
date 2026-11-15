@@ -94,9 +94,11 @@ delivery was performed as part of the initial implementation.
 
 ## Reliability and privacy
 
-Only front names, update timestamp, and an opaque event UUID leave the sender.
-Notes, full profiles, pictures, history, and backup ciphertext are excluded.
-Names on this service are **not end-to-end encrypted**; they are readable by the
+Only current-front names, roles, per-member Notes text (the expanded description),
+active group names/colors, small cropped photo thumbnails, update timestamp, and
+an opaque event UUID leave the sender. Timeline notes, other members, original
+photos, group descriptions, history, and backup ciphertext are excluded.
+Shared profiles on this service are **not end-to-end encrypted**; they are readable by the
 server operator. The privacy policy and sharing screen disclose this.
 
 Sender credentials and the latest pending update use secure storage; receiver
@@ -147,3 +149,31 @@ recorded in the implementation handoff. Real-device/APNs checks remain necessary
   Flutter tests, formatting, and analysis have not run.
 - GitHub branch creation returned HTTP 403 (integration lacks write access).
   The changes were not pushed and no pull request was created.
+
+
+## Profile details update
+
+Companion rows display the part's profile photo (initials when unavailable) and
+up to eight group-colored dots plus an overflow count. Tap a row to expand its
+role, Notes description and complete list of group names/colors. Empty or legacy
+profiles have graceful fallbacks. Photo thumbnails are 96×96 PNGs using the
+framing selected in AOM; originals are not uploaded by this feature.
+
+Deploy the server before the updated sender: the previous strict server rejects
+the new profile fields. The updated server accepts both old name-only senders
+and profile senders. Either companion version can read the new status.
+No pairing reset or database migration is required.
+
+Then upload new builds of both apps using their next unused build numbers.
+Preserve the existing bundle identifiers and signing settings. Open AOM after
+updating to publish current profiles; editing a currently fronting part or its
+group updates the companion without an extra front-change notification. Existing
+pending front-change notifications are preserved when a profile refresh occurs.
+
+Validation for this update: server typechecking/build and all 46 server tests
+passed. The unsigned iPhone Release receiver builds. Production Swift-model
+decoding is checked with `python3 companion/scripts/check_profile_decoding.py`.
+Flutter analysis and formatting are checked locally; run `flutter test` in a
+normal Terminal because this environment blocks the test runner's localhost
+socket. New Dart tests cover sharing boundaries, thumbnail generation/fallbacks,
+and notification coalescing.
